@@ -107,13 +107,16 @@ export default function PrintService() {
 
     // PERUBAHAN: Gunakan format instruksi, bukan command
     const telegramMessage =
-      `Silakan upload file yang ingin dicetak\n\n` +
-      `Setelan print:\n` +
-      `- Halaman warna: ${colorStr || "tidak ada"}\n` +
-      `- Halaman hitam-putih: ${bwStr || "tidak ada"}\n` +
-      `- Jumlah salinan: ${advancedSettings.copies}\n\n` +
-      `Total biaya: Rp ${cost.toLocaleString("id-ID")}\n\n` +
-      `Ketik /pay setelah file terupload`;
+      `/file ${file.name}\n` +
+      `/setprint color:${colorStr} bw:${bwStr} copies:${advancedSettings.copies}\n` +
+      `/pay`;
+    // `Silakan upload file yang ingin dicetak\n\n` +
+    // `Setelan print:\n` +
+    // `- Halaman warna: ${colorStr || "tidak ada"}\n` +
+    // `- Halaman hitam-putih: ${bwStr || "tidak ada"}\n` +
+    // `- Jumlah salinan: ${advancedSettings.copies}\n\n` +
+    // `Total biaya: Rp ${cost.toLocaleString("id-ID")}\n\n` +
+    // `Ketik /pay setelah file terupload`;
 
     const encodedMessage = encodeURIComponent(telegramMessage);
     const deepLink = `https://t.me/ircstore_bot?text=${encodedMessage}`;
