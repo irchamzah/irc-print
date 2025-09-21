@@ -147,25 +147,27 @@ export default function PrintService() {
           name="description"
           content="Layanan print 24 jam online dengan pembayaran QRIS"
         />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+      <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+        <div className="bg-white rounded-xl shadow-lg p-4 md:p-8 mb-6 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-2">
               Print24Jam
             </h1>
-            <p className="text-gray-600">Layanan Cetak Online 24 Jam</p>
+            <p className="text-sm md:text-base text-gray-600">
+              Layanan Cetak Online 24 Jam
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* File Upload Section - Tetap sama seperti sebelumnya */}
+          <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
             {/* File Upload Section */}
-            <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <div className="bg-blue-50 p-4 md:p-6 rounded-lg border border-blue-200">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4 flex items-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6 mr-2 text-blue-600"
+                  className="h-5 w-5 md:h-6 md:w-6 mr-2 text-blue-600"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -180,11 +182,11 @@ export default function PrintService() {
                 Upload File
               </h2>
               <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <label className="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-4 pb-5 md:pt-5 md:pb-6">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-10 w-10 text-blue-500 mb-2"
+                      className="h-8 w-8 md:h-10 md:w-10 text-blue-500 mb-1 md:mb-2"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -196,20 +198,22 @@ export default function PrintService() {
                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                       />
                     </svg>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs md:text-sm text-gray-600 text-center">
                       <span className="font-semibold">Klik untuk upload</span>{" "}
                       atau drag and drop
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      PDF saja (Maks. 10MB) {/* Diubah dari PDF, DOC, DOCX */}
+                    <p className="text-xs text-gray-500 mt-1 text-center">
+                      PDF saja (Maks. 10MB)
                     </p>
                   </div>
                   {isLoading && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                      <div className="bg-white p-6 rounded-lg shadow-lg">
+                      <div className="bg-white p-4 md:p-6 rounded-lg shadow-lg mx-4">
                         <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                          <span>Memproses file PDF...</span>
+                          <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-600 mr-3"></div>
+                          <span className="text-sm md:text-base">
+                            Memproses file PDF...
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -217,15 +221,14 @@ export default function PrintService() {
                   <input
                     type="file"
                     className="hidden"
-                    accept=".pdf" // Hanya terima PDF
+                    accept=".pdf"
                     onChange={async (e) => {
                       const selectedFile = e.target.files[0];
                       if (selectedFile) {
                         if (selectedFile.type === "application/pdf") {
-                          // Panggil handleFileUpload yang berisi semua logic
                           const success = await handleFileUpload(selectedFile);
                           if (!success) {
-                            e.target.value = ""; // Reset jika gagal
+                            e.target.value = "";
                           }
                         } else {
                           alert("Hanya file PDF yang diperbolehkan!");
@@ -238,7 +241,7 @@ export default function PrintService() {
                 </label>
               </div>
               {file && (
-                <p className="text-sm text-green-600 mt-2 flex items-center">
+                <p className="text-xs md:text-sm text-green-600 mt-2 flex items-center justify-center md:justify-start">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-4 w-4 mr-1"
@@ -260,12 +263,12 @@ export default function PrintService() {
 
             {/* Advanced Settings Section */}
             {file && totalPages > 0 && (
-              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4">
                   Pengaturan Print Lanjutan
                 </h2>
 
-                <div className="mb-6">
+                <div className="mb-4 md:mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Jumlah salinan:
                   </label>
@@ -279,7 +282,7 @@ export default function PrintService() {
                       setAdvancedSettings(newSettings);
                       calculateCost(newSettings);
                     }}
-                    className="w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+                    className="w-full md:w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-700"
                   />
                 </div>
 
@@ -290,18 +293,18 @@ export default function PrintService() {
                     setAdvancedSettings(newSettings);
                     calculateCost(newSettings);
                   }}
-                  file={file} // ← Tambahkan ini
+                  file={file}
                 />
               </div>
             )}
 
-            {/* Payment Section - Tetap sama */}
+            {/* Payment Section */}
             {cost > 0 && (
-              <div className="bg-green-50 p-6 rounded-lg border border-green-200">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+              <div className="bg-green-50 p-4 md:p-6 rounded-lg border border-green-200">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4 flex items-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 mr-2 text-green-600"
+                    className="h-5 w-5 md:h-6 md:w-6 mr-2 text-green-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -315,55 +318,23 @@ export default function PrintService() {
                   </svg>
                   Pembayaran
                 </h2>
-                <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
-                  <p className="text-lg font-semibold text-center text-gray-800">
+                <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm mb-3 md:mb-4">
+                  <p className="text-base md:text-lg font-semibold text-center text-gray-800">
                     Total Biaya:{" "}
                     <span className="text-blue-600">
                       Rp {cost.toLocaleString("id-ID")}
                     </span>
                   </p>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
-                  <p className="text-center text-gray-600 mb-2">
-                    Scan QRIS untuk pembayaran
-                  </p>
-                  <div className="flex justify-center">
-                    <div className="w-48 h-48 bg-gray-200 flex items-center justify-center rounded-lg border border-gray-300">
-                      <span className="text-gray-500 text-sm text-center">
-                        [QRIS Code akan muncul di sini]
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-center text-xs text-gray-500 mt-2">
-                    Supported by: Gopay, OVO, Dana, LinkAja, dll.
-                  </p>
-                </div>
                 <button
                   type="submit"
-                  className="w-full px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  className="w-full px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
                 >
                   Bayar dan Print
                 </button>
               </div>
             )}
           </form>
-          {/* Di bagian bawah form, tambahkan test button */}
-          {/* <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-800 mb-2">
-              Developer Test
-            </h3>
-            <button
-              type="button"
-              onClick={testDeepLink}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Test Deep Link
-            </button>
-            <p className="text-sm text-gray-600 mt-2">
-              Klik untuk test deep link functionality (buka console untuk
-              melihat detail)
-            </p>
-          </div> */}
         </div>
       </main>
     </div>
