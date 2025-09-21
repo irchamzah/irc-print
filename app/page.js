@@ -1,28 +1,185 @@
 "use client";
 import { useState } from "react";
 import Head from "next/head";
+import dynamic from "next/dynamic";
+import { getPDFPageCount, validatePDFFile } from "../utils/pdfUtils";
+
+// Lazy load component untuk performance
+const PageSelector = dynamic(() => import("../components/PageSelector"), {
+  ssr: false,
+  loading: () => <div>Loading...</div>,
+});
 
 export default function PrintService() {
   const [file, setFile] = useState(null);
-  const [settings, setSettings] = useState({
-    color: "bw",
-    pageRange: "",
+  const [advancedSettings, setAdvancedSettings] = useState({
+    colorPages: [],
+    bwPages: [],
     copies: 1,
   });
+  const [totalPages, setTotalPages] = useState(0);
   const [cost, setCost] = useState(0);
-  const [paymentStatus, setPaymentStatus] = useState("pending");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const calculateCost = () => {
-    const pageCost = settings.color === "color" ? 1000 : 500;
-    // Asumsi 10 halaman untuk perhitungan sederhana
-    setCost(10 * pageCost * settings.copies);
+  const calculateCost = (settings = advancedSettings) => {
+    const colorCost = settings.colorPages.length * 1000;
+    const bwCost = settings.bwPages.length * 500;
+    const totalCost = (colorCost + bwCost) * settings.copies;
+    setCost(totalCost);
+    return totalCost;
+  };
+
+  const handleFileUpload = async (selectedFile) => {
+    // Validasi file
+    const validation = validatePDFFile(selectedFile);
+    if (!validation.isValid) {
+      alert(validation.error);
+      return false;
+    }
+
+    setIsLoading(true);
+    try {
+      // Get page count from PDF
+      const pageCount = await getPDFPageCount(selectedFile);
+      setTotalPages(pageCount);
+      setFile(selectedFile);
+
+      // Set default settings: halaman 1 warna, lainnya BW
+      const defaultColorPages = [1];
+      const defaultBwPages = Array.from(
+        { length: pageCount - 1 },
+        (_, i) => i + 2
+      );
+
+      setAdvancedSettings({
+        colorPages: defaultColorPages,
+        bwPages: defaultBwPages,
+        copies: 1,
+      });
+
+      // Calculate initial cost
+      calculateCost({
+        colorPages: defaultColorPages,
+        bwPages: defaultBwPages,
+        copies: 1,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error reading PDF:", error);
+      alert("Gagal membaca file PDF. Silakan coba file lain.");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Implementasi upload dan pembayaran
-    alert("Fitur akan diimplementasi setelah setup backend");
+
+    if (!file) {
+      alert("Silakan upload file terlebih dahulu!");
+      return;
+    }
+
+    // Generate format untuk Telegram
+    const groupConsecutive = (pages) => {
+      if (pages.length === 0) return [];
+      pages.sort((a, b) => a - b);
+      const result = [];
+      let start = pages[0];
+      let end = pages[0];
+
+      for (let i = 1; i < pages.length; i++) {
+        if (pages[i] === end + 1) {
+          end = pages[i];
+        } else {
+          result.push(start === end ? `${start}` : `${start}-${end}`);
+          start = end = pages[i];
+        }
+      }
+      result.push(start === end ? `${start}` : `${start}-${end}`);
+      return result;
+    };
+
+    const colorStr = groupConsecutive(advancedSettings.colorPages).join(",");
+    const bwStr = groupConsecutive(advancedSettings.bwPages).join(",");
+
+    // PERUBAHAN: Gunakan format instruksi, bukan command
+    const telegramMessage =
+      `Silakan upload file yang ingin dicetak\n\n` +
+      `Setelan print:\n` +
+      `- Halaman warna: ${colorStr || "tidak ada"}\n` +
+      `- Halaman hitam-putih: ${bwStr || "tidak ada"}\n` +
+      `- Jumlah salinan: ${advancedSettings.copies}\n\n` +
+      `Total biaya: Rp ${cost.toLocaleString("id-ID")}\n\n` +
+      `Ketik /pay setelah file terupload`;
+
+    const encodedMessage = encodeURIComponent(telegramMessage);
+    const deepLink = `https://t.me/ircstore_bot?text=${encodedMessage}`;
+
+    // Buka di tab baru
+    window.open(deepLink, "_blank");
+
+    alert(
+      "Silakan upload file ke bot Telegram di tab yang terbuka, lalu ketik /pay"
+    );
   };
+
+  // const testDeepLink = () => {
+  //   // Test data
+  //   const testSettings = {
+  //     colorPages: [1, 3, 5],
+  //     bwPages: [2, 4, 6, 7, 8, 9, 10],
+  //     copies: 2,
+  //   };
+
+  //   const testFileName = "test-document.pdf";
+
+  //   // Generate format untuk Telegram
+  //   const groupConsecutive = (pages) => {
+  //     if (pages.length === 0) return [];
+  //     pages.sort((a, b) => a - b);
+  //     const result = [];
+  //     let start = pages[0];
+  //     let end = pages[0];
+
+  //     for (let i = 1; i < pages.length; i++) {
+  //       if (pages[i] === end + 1) {
+  //         end = pages[i];
+  //       } else {
+  //         result.push(start === end ? `${start}` : `${start}-${end}`);
+  //         start = end = pages[i];
+  //       }
+  //     }
+  //     result.push(start === end ? `${start}` : `${start}-${end}`);
+  //     return result;
+  //   };
+
+  //   const colorStr = groupConsecutive(testSettings.colorPages).join(",");
+  //   const bwStr = groupConsecutive(testSettings.bwPages).join(",");
+
+  //   const telegramMessage =
+  //     `/file ${testFileName}\n` +
+  //     `/setprint color:${colorStr} bw:${bwStr} copies:${testSettings.copies}\n` +
+  //     `/pay`;
+
+  //   // Encode message untuk deep link
+  //   const encodedMessage = encodeURIComponent(telegramMessage);
+  //   const deepLink = `https://t.me/ircstore_bot?text=${encodedMessage}`;
+
+  //   console.log("=== DEEP LINK TEST ===");
+  //   console.log("Original Message:", telegramMessage);
+  //   console.log("Encoded Message:", encodedMessage);
+  //   console.log("Base64 Encoded:", btoa(encodedMessage));
+  //   console.log("Deep Link:", deepLink);
+  //   console.log("=====================");
+
+  //   // Buka di tab baru untuk testing
+  //   window.open(deepLink, "_blank");
+
+  //   return deepLink;
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -34,7 +191,7 @@ export default function PrintService() {
         />
       </Head>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
@@ -44,6 +201,7 @@ export default function PrintService() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* File Upload Section - Tetap sama seperti sebelumnya */}
             {/* File Upload Section */}
             <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
@@ -85,13 +243,38 @@ export default function PrintService() {
                       atau drag and drop
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      PDF, DOC, DOCX (Maks. 10MB)
+                      PDF saja (Maks. 10MB) {/* Diubah dari PDF, DOC, DOCX */}
                     </p>
                   </div>
+                  {isLoading && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                      <div className="bg-white p-6 rounded-lg shadow-lg">
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                          <span>Memproses file PDF...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <input
                     type="file"
                     className="hidden"
-                    onChange={(e) => setFile(e.target.files[0])}
+                    accept=".pdf" // Hanya terima PDF
+                    onChange={async (e) => {
+                      const selectedFile = e.target.files[0];
+                      if (selectedFile) {
+                        if (selectedFile.type === "application/pdf") {
+                          // Panggil handleFileUpload yang berisi semua logic
+                          const success = await handleFileUpload(selectedFile);
+                          if (!success) {
+                            e.target.value = ""; // Reset jika gagal
+                          }
+                        } else {
+                          alert("Hanya file PDF yang diperbolehkan!");
+                          e.target.value = "";
+                        }
+                      }
+                    }}
                     required
                   />
                 </label>
@@ -117,86 +300,44 @@ export default function PrintService() {
               )}
             </div>
 
-            {/* Print Settings Section */}
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6 mr-2 text-gray-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m4 4h6a2 2 0 002-2v-4a2 2 0 00-2-2h-6a2 2 0 00-2 2v4a2 2 0 002 2z"
-                  />
-                </svg>
-                Pengaturan Print
-              </h2>
+            {/* Advanced Settings Section */}
+            {file && totalPages > 0 && (
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                  Pengaturan Print Lanjutan
+                </h2>
 
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Warna:
-                  </label>
-                  <select
-                    value={settings.color}
-                    onChange={(e) =>
-                      setSettings({ ...settings, color: e.target.value })
-                    }
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md text-gray-700"
-                  >
-                    <option value="bw">Hitam Putih (Rp 500/halaman)</option>
-                    <option value="color">Warna (Rp 1000/halaman)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Halaman yang dicetak (kosongkan untuk semua):
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: 1-5, 8, 11-13"
-                    value={settings.pageRange}
-                    onChange={(e) =>
-                      setSettings({ ...settings, pageRange: e.target.value })
-                    }
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 ">
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Jumlah salinan:
                   </label>
                   <input
                     type="number"
                     min="1"
-                    value={settings.copies}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        copies: parseInt(e.target.value),
-                      })
-                    }
-                    className="mt-1 block w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-700"
+                    value={advancedSettings.copies}
+                    onChange={(e) => {
+                      const copies = parseInt(e.target.value) || 1;
+                      const newSettings = { ...advancedSettings, copies };
+                      setAdvancedSettings(newSettings);
+                      calculateCost(newSettings);
+                    }}
+                    className="w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-700"
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={calculateCost}
-                  className="w-full md:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Hitung Biaya
-                </button>
+                <PageSelector
+                  totalPages={totalPages}
+                  initialSettings={advancedSettings}
+                  onSettingsChange={(newSettings) => {
+                    setAdvancedSettings(newSettings);
+                    calculateCost(newSettings);
+                  }}
+                  file={file} // ← Tambahkan ini
+                />
               </div>
-            </div>
+            )}
 
+            {/* Payment Section - Tetap sama */}
             {cost > 0 && (
               <div className="bg-green-50 p-6 rounded-lg border border-green-200">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
@@ -248,14 +389,24 @@ export default function PrintService() {
               </div>
             )}
           </form>
+          {/* Di bagian bawah form, tambahkan test button */}
+          {/* <div className="mt-8 p-4 bg-gray-100 rounded-lg">
+            <h3 className="text-lg font-medium text-gray-800 mb-2">
+              Developer Test
+            </h3>
+            <button
+              type="button"
+              onClick={testDeepLink}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Test Deep Link
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              Klik untuk test deep link functionality (buka console untuk
+              melihat detail)
+            </p>
+          </div> */}
         </div>
-
-        <footer className="text-center text-gray-500 text-sm">
-          <p>
-            © {new Date().getFullYear()} Print24Jam - Layanan Cetak 24 Jam
-            Online
-          </p>
-        </footer>
       </main>
     </div>
   );
