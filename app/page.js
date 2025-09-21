@@ -20,6 +20,7 @@ export default function PrintService() {
   const [totalPages, setTotalPages] = useState(0);
   const [cost, setCost] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
 
   const calculateCost = (settings = advancedSettings) => {
     const colorCost = settings.colorPages.length * 1000;
@@ -105,19 +106,27 @@ export default function PrintService() {
     const colorStr = groupConsecutive(advancedSettings.colorPages).join(",");
     const bwStr = groupConsecutive(advancedSettings.bwPages).join(",");
 
-    // PERUBAHAN: Gunakan format instruksi, bukan command
-    const telegramMessage =
-      `/file ${file.name}\n` +
-      `/setprint color:${colorStr} bw:${bwStr} copies:${advancedSettings.copies}\n` +
-      `/pay`;
-    // `Silakan upload file yang ingin dicetak\n\n` +
-    // `Setelan print:\n` +
-    // `- Halaman warna: ${colorStr || "tidak ada"}\n` +
-    // `- Halaman hitam-putih: ${bwStr || "tidak ada"}\n` +
-    // `- Jumlah salinan: ${advancedSettings.copies}\n\n` +
-    // `Total biaya: Rp ${cost.toLocaleString("id-ID")}\n\n` +
-    // `Ketik /pay setelah file terupload`;
+    // **PERUBAHAN PENTING**: Generate /setprint command
+    const setprintCommand = `/setprint color:${colorStr} bw:${bwStr} copies:${advancedSettings.copies}`;
 
+    // **COPY TO CLIPBOARD**
+    try {
+      await navigator.clipboard.writeText(setprintCommand);
+      console.log("✅ Text copied to clipboard:", setprintCommand);
+    } catch (err) {
+      console.error("❌ Failed to copy text: ", err);
+      // Fallback untuk browser yang tidak support clipboard API
+      const textArea = document.createElement("textarea");
+      textArea.value = setprintCommand;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      console.log("📋 Used fallback copy method");
+    }
+
+    // **DEEP LINK untuk Telegram**
+    const telegramMessage = `/file ${file.name}`;
     const encodedMessage = encodeURIComponent(telegramMessage);
     const deepLink = `https://t.me/ircstore_bot?text=${encodedMessage}`;
 
@@ -125,64 +134,10 @@ export default function PrintService() {
     window.open(deepLink, "_blank");
 
     alert(
-      "Silakan upload file ke bot Telegram di tab yang terbuka, lalu ketik /pay"
+      `✅ Text telah disalin ke clipboard: ${setprintCommand}\n\n` +
+        "📱 Buka Telegram di tab yang terbuka, upload file, lalu paste text yang sudah disalin!"
     );
   };
-
-  // const testDeepLink = () => {
-  //   // Test data
-  //   const testSettings = {
-  //     colorPages: [1, 3, 5],
-  //     bwPages: [2, 4, 6, 7, 8, 9, 10],
-  //     copies: 2,
-  //   };
-
-  //   const testFileName = "test-document.pdf";
-
-  //   // Generate format untuk Telegram
-  //   const groupConsecutive = (pages) => {
-  //     if (pages.length === 0) return [];
-  //     pages.sort((a, b) => a - b);
-  //     const result = [];
-  //     let start = pages[0];
-  //     let end = pages[0];
-
-  //     for (let i = 1; i < pages.length; i++) {
-  //       if (pages[i] === end + 1) {
-  //         end = pages[i];
-  //       } else {
-  //         result.push(start === end ? `${start}` : `${start}-${end}`);
-  //         start = end = pages[i];
-  //       }
-  //     }
-  //     result.push(start === end ? `${start}` : `${start}-${end}`);
-  //     return result;
-  //   };
-
-  //   const colorStr = groupConsecutive(testSettings.colorPages).join(",");
-  //   const bwStr = groupConsecutive(testSettings.bwPages).join(",");
-
-  //   const telegramMessage =
-  //     `/file ${testFileName}\n` +
-  //     `/setprint color:${colorStr} bw:${bwStr} copies:${testSettings.copies}\n` +
-  //     `/pay`;
-
-  //   // Encode message untuk deep link
-  //   const encodedMessage = encodeURIComponent(telegramMessage);
-  //   const deepLink = `https://t.me/ircstore_bot?text=${encodedMessage}`;
-
-  //   console.log("=== DEEP LINK TEST ===");
-  //   console.log("Original Message:", telegramMessage);
-  //   console.log("Encoded Message:", encodedMessage);
-  //   console.log("Base64 Encoded:", btoa(encodedMessage));
-  //   console.log("Deep Link:", deepLink);
-  //   console.log("=====================");
-
-  //   // Buka di tab baru untuk testing
-  //   window.open(deepLink, "_blank");
-
-  //   return deepLink;
-  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
