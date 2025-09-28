@@ -1,4 +1,4 @@
-const { userSessions } = require("../lib/bot/server");
+const { userSessions } = require("../bot-runner");
 
 function monitorSessions() {
   console.log("👀 Monitoring user sessions...\n");
