@@ -1,15 +1,13 @@
-// bot/handlers/commands/pay.js
-const { userSessions } = require("../../config/session"); // Import instance
+// bot/handlers/commands/pay.js - TAMBAHKAN CLEANUP PADA VALIDATION ERROR
+const { userSessions } = require("../../config/session");
 const paymentService = require("../../services/paymentService");
+const fileService = require("../../services/fileService");
 
 async function handlePayCommand(ctx) {
   const userId = ctx.from.id;
-
-  // Debug info
-  console.log("💰 Pay command received for user:", userId);
-  console.log("📊 Total active sessions:", userSessions.size);
-
   const userSession = userSessions.get(userId);
+
+  console.log("💰 Pay command received for user:", userId);
 
   if (!userSession) {
     await ctx.reply("❌ Silakan mulai dengan /file terlebih dahulu");
@@ -40,7 +38,22 @@ async function handlePayCommand(ctx) {
       "id-ID"
     )}. Membuat QRIS pembayaran...`
   );
-  await paymentService.processPayment(ctx, userSession);
+
+  try {
+    await paymentService.processPayment(ctx, userSession);
+  } catch (error) {
+    console.error("❌ Payment processing error:", error);
+
+    // HAPUS FILE JIKA PAYMENT GAGAL
+    if (userSession.fileInfo && userSession.fileInfo.localPath) {
+      await fileService.deleteFile(userSession.fileInfo.localPath);
+      console.log(
+        `✅ File deleted due to payment error: ${userSession.fileInfo.localPath}`
+      );
+    }
+
+    await ctx.reply("❌ Error processing payment. Silakan coba lagi.");
+  }
 }
 
 module.exports = { handlePayCommand };

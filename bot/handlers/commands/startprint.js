@@ -1,4 +1,4 @@
-// bot/handlers/commands/startprint.js
+// bot/handlers/commands/startprint.js - TAMBAHKAN FILE CLEANUP
 const { userSessions } = require("../../config/session");
 const fileService = require("../../services/fileService");
 const printService = require("../../services/printService");
@@ -31,7 +31,7 @@ async function handleStartPrintCommand(ctx) {
   try {
     await ctx.reply("📥 Mengunduh file PDF untuk printing...");
 
-    // Download file PDF (karena sebelumnya hanya simpan info, belum download)
+    // Download file PDF
     const downloadResult = await fileService.downloadFile(
       userSession.fileInfo.fileId,
       userSession.fileInfo.fileName,
@@ -63,6 +63,18 @@ async function handleStartPrintCommand(ctx) {
           `Terima kasih telah menggunakan layanan kami! 🎉`
       );
 
+      // HAPUS FILE SETELAH PRINT BERHASIL
+      if (userSession.fileInfo.localPath) {
+        const deleteResult = await fileService.deleteFile(
+          userSession.fileInfo.localPath
+        );
+        if (deleteResult.success) {
+          console.log(
+            `✅ File deleted after successful print: ${userSession.fileInfo.localPath}`
+          );
+        }
+      }
+
       // Hapus session setelah selesai
       userSessions.delete(userId);
     } else {
@@ -70,6 +82,15 @@ async function handleStartPrintCommand(ctx) {
     }
   } catch (error) {
     console.error("❌ Error in startprint:", error);
+
+    // HAPUS FILE JIKA ADA ERROR (rollback)
+    if (userSession.fileInfo.localPath) {
+      await fileService.deleteFile(userSession.fileInfo.localPath);
+      console.log(
+        `✅ File deleted due to error: ${userSession.fileInfo.localPath}`
+      );
+    }
+
     await ctx.reply(
       `❌ Gagal memproses printing: ${error.message}\n\n` +
         `Silakan hubungi admin untuk bantuan.`

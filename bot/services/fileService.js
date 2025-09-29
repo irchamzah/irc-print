@@ -115,15 +115,98 @@ class FileService {
     }
   }
 
-  // Hapus file
+  // Hapus file user berdasarkan userId
+  async deleteUserFiles(userId) {
+    try {
+      console.log(`🧹 Cleaning up files for user: ${userId}`);
+      const files = await fs.readdir(this.storagePath);
+      let deletedCount = 0;
+
+      for (const file of files) {
+        // Cek jika file mengandung userId
+        if (file.includes(`_${userId}_`)) {
+          const filePath = path.join(this.storagePath, file);
+          const deleteResult = await this.deleteFile(filePath);
+          if (deleteResult.success) {
+            deletedCount++;
+            console.log(`✅ Deleted user file: ${file}`);
+          }
+        }
+      }
+
+      console.log(`🗑️ Cleaned up ${deletedCount} files for user ${userId}`);
+      return { success: true, deletedCount };
+    } catch (error) {
+      console.error(`❌ Error cleaning up files for user ${userId}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Hapus file berdasarkan file path
   async deleteFile(filePath) {
     try {
       await fs.unlink(filePath);
       console.log(`🗑️ File deleted: ${filePath}`);
       return { success: true };
     } catch (error) {
+      // File mungkin sudah dihapus, tidak perlu error
+      if (error.code === "ENOENT") {
+        console.log(`📝 File already deleted: ${filePath}`);
+        return { success: true };
+      }
       console.error("❌ Error deleting file:", error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Cleanup old files (untuk session cleanup)
+  async cleanupOldFiles(maxAgeMinutes = 30) {
+    try {
+      const files = await fs.readdir(this.storagePath);
+      const now = Date.now();
+      const maxAge = maxAgeMinutes * 60 * 1000; // Convert to milliseconds
+      let deletedCount = 0;
+
+      for (const file of files) {
+        const filePath = path.join(this.storagePath, file);
+
+        try {
+          const stats = await fs.stat(filePath);
+
+          // Hapus file yang lebih tua dari maxAge
+          if (now - stats.mtime.getTime() > maxAge) {
+            await this.deleteFile(filePath);
+            deletedCount++;
+          }
+        } catch (error) {
+          // Skip file jika tidak bisa diakses
+          console.log(`⚠️ Skipping file: ${file}`, error.message);
+        }
+      }
+
+      console.log(
+        `🧹 Cleaned up ${deletedCount} old files (older than ${maxAgeMinutes} minutes)`
+      );
+      return { deletedCount };
+    } catch (error) {
+      console.error("❌ Error cleaning up old files:", error);
+      return { error: error.message };
+    }
+  }
+
+  // Get all files for a specific user
+  async getUserFiles(userId) {
+    try {
+      const files = await fs.readdir(this.storagePath);
+      const userFiles = files.filter((file) => file.includes(`_${userId}_`));
+
+      return userFiles.map((file) => ({
+        name: file,
+        path: path.join(this.storagePath, file),
+      }));
+    } catch (error) {
+      console.error(`❌ Error getting files for user ${userId}:`, error);
+      return [];
     }
   }
 }

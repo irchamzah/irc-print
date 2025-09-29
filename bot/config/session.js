@@ -54,20 +54,57 @@ function startSessionCleanup() {
   setInterval(() => {
     const now = Date.now();
     let cleanedCount = 0;
+    let fileCleanupCount = 0;
 
     userSessions.forEach((session, userId) => {
       const expiryTime = getSessionExpiryTime(session);
+
       if (now > expiryTime) {
         console.log(`🧹 Cleaning expired session for user: ${userId}`);
+
+        // Hapus file user sebelum hapus session
+        fileService
+          .deleteUserFiles(userId)
+          .then((result) => {
+            if (result.success) {
+              fileCleanupCount += result.deletedCount;
+              console.log(
+                `✅ Cleaned ${result.deletedCount} files for user ${userId}`
+              );
+            }
+          })
+          .catch((error) => {
+            console.error(`❌ Error cleaning files for user ${userId}:`, error);
+          });
+
+        // Hapus session
         userSessions.delete(userId);
         cleanedCount++;
       }
     });
 
     if (cleanedCount > 0) {
-      console.log(`✅ Cleaned ${cleanedCount} expired sessions`);
+      console.log(
+        `✅ Cleaned ${cleanedCount} expired sessions and ${fileCleanupCount} files`
+      );
     }
-  }, 5 * 60 * 1000);
+  }, 5 * 60 * 1000); // Check every 5 minutes
+
+  // Juga cleanup old files secara terpisah setiap 1 jam
+  setInterval(() => {
+    fileService
+      .cleanupOldFiles(30) // Hapus file older than 30 minutes
+      .then((result) => {
+        if (result.deletedCount > 0) {
+          console.log(
+            `🕒 Scheduled cleanup: ${result.deletedCount} old files removed`
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Error in scheduled file cleanup:", error);
+      });
+  }, 60 * 60 * 1000); // Every 1 hour
 }
 
 function getSessionExpiryTime(session) {

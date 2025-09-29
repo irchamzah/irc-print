@@ -119,7 +119,7 @@ class PaymentService {
           "❌ Waktu pembayaran telah habis. Silakan mulai lagi dengan /pay."
         );
       }
-    }, 10000);
+    }, 1000000);
   }
 
   async checkPaymentStatus(orderId) {
