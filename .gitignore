@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Storage files
+/storage/pdf/*
+!/storage/pdf/.gitkeep
+
+# Log files
+/storage/logs/*
+!/storage/logs/.gitkeep

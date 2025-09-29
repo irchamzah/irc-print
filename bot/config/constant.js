@@ -16,7 +16,7 @@ module.exports = {
     FILE: "/file",
     SETPRINT: "/setprint",
     PAY: "/pay",
-    STATUS: "/status",
+    STATUS: "/checkstatus",
     DEBUG: "/debug",
   },
 };

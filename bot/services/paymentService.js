@@ -88,7 +88,8 @@ class PaymentService {
 
       await ctx.reply(
         "💳 *Cara Pembayaran:*\n\n1. Buka aplikasi dompet digital\n2. Scan QR code di atas\n3. Konfirmasi pembayaran\n\nAtau klik: " +
-          qrisResult.payment_url,
+          qrisResult.payment_url +
+          "\n\nKetik /checkstatus untuk mengecek status pembayaran.",
         { parse_mode: "Markdown" }
       );
 
@@ -123,11 +124,22 @@ class PaymentService {
 
   async checkPaymentStatus(orderId) {
     try {
+      const midtransClient = require("midtrans-client");
+
       let snap = new midtransClient.Snap({
         isProduction: false,
         serverKey: process.env.MIDTRANS_SERVER_KEY,
       });
-      return await snap.transaction.status(orderId);
+
+      const statusResponse = await snap.transaction.status(orderId);
+      console.log(
+        "📊 Payment status for",
+        orderId,
+        ":",
+        statusResponse.transaction_status
+      );
+
+      return statusResponse;
     } catch (error) {
       console.error("❌ Payment status check error:", error.message);
       return null;
@@ -158,6 +170,51 @@ class PaymentService {
       console.error("Printing error:", error);
       await ctx.reply("❌ Gagal memproses printing. Silakan hubungi admin.");
     }
+  }
+
+  async processPrinting(ctx, userSession) {
+    try {
+      await ctx.reply("🖨️ Memproses printing...");
+
+      // Dapatkan info file dari session
+      if (!userSession.fileInfo || !userSession.fileInfo.localPath) {
+        throw new Error("File tidak ditemukan untuk printing");
+      }
+
+      const fileInfo = userSession.fileInfo;
+
+      // TODO: Implement printing logic di sini
+      // Untuk sekarang, kita hanya konfirmasi file siap diprint
+
+      await ctx.reply(
+        `✅ File siap dicetak!\n\n` +
+          `📄 File: ${fileInfo.fileName}\n` +
+          `📁 Lokal: ${fileInfo.downloadedName}\n` +
+          `⚙️ Settings: ${JSON.stringify(userSession.settings)}\n` +
+          `🖨️ Akan dicetak dengan konfigurasi yang sudah ditentukan.`
+      );
+
+      // Simpan info printing ke database atau log (opsional)
+      await this.logPrintJob(userSession);
+
+      // Hapus session setelah selesai
+      const { userSessions } = require("../config/session");
+      userSessions.delete(ctx.from.id);
+    } catch (error) {
+      console.error("Printing error:", error);
+      await ctx.reply("❌ Gagal memproses printing. Silakan hubungi admin.");
+    }
+  }
+
+  async logPrintJob(userSession) {
+    // TODO: Implement logging ke database
+    console.log("📋 Print job completed:", {
+      userId: userSession.userId,
+      fileName: userSession.fileInfo.fileName,
+      settings: userSession.settings,
+      cost: userSession.cost,
+      completedAt: new Date().toISOString(),
+    });
   }
 }
 
