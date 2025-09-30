@@ -64,7 +64,7 @@ function parsePageRange(pageStr) {
 
 // Helper function untuk calculate cost
 function calculateCostFromSettings(settings) {
-  const colorCost = settings.colorPages.length * 1000;
+  const colorCost = settings.colorPages.length * 1500;
   const bwCost = settings.bwPages.length * 500;
   return (colorCost + bwCost) * settings.copies;
 }

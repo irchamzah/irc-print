@@ -101,6 +101,7 @@ async function startBotServer(botToken) {
 
     // Start session cleanup
     startSessionCleanup();
+    console.log("✅ Session cleanup started");
 
     // Start bot
     await bot.launch();

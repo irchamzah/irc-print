@@ -1,5 +1,6 @@
 // bot/config/session.js
 const constants = require("./constant");
+const fileService = require("../services/fileService"); // TAMBAHKAN INI
 
 // BUAT SINGLE INSTANCE SESSION MANAGER
 const userSessions = (function () {

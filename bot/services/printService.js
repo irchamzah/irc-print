@@ -1,4 +1,4 @@
-// bot/services/printService.js - SOLUSI DENGAN POWER SHELL .NET
+// bot/services/printService.js - SOLUSI YANG BENAR
 const fs = require("fs").promises;
 const path = require("path");
 const { exec } = require("child_process");
@@ -38,8 +38,8 @@ class PrintService {
         throw new Error("File tidak ditemukan untuk printing");
       }
 
-      // Gunakan metode PowerShell .NET untuk kontrol penuh
-      const printResult = await this.printWithPowerShellNET(
+      // Gunakan metode yang benar dengan Foxit Reader
+      const printResult = await this.printWithFoxitAndSettings(
         fileInfo.localPath,
         settings,
         printerName
@@ -69,10 +69,10 @@ class PrintService {
     }
   }
 
-  // METODE UTAMA: PowerShell dengan .NET System.Printing
-  async printWithPowerShellNET(filePath, settings, printerName) {
+  // METODE UTAMA: Print dengan Foxit Reader dan setting printer
+  async printWithFoxitAndSettings(filePath, settings, printerName) {
     try {
-      console.log("🔄 Using PowerShell .NET Printing...");
+      console.log("🔄 Using Foxit Reader with printer settings...");
 
       const copies = settings.copies || 1;
       const colorPages = this.parsePageRange(settings.color);
@@ -87,7 +87,7 @@ class PrintService {
 
       // Jika ada setting color/bw, proses terpisah
       if (colorPages.length > 0 || bwPages.length > 0) {
-        return await this.printColorBwWithNET(
+        return await this.printColorBwSeparate(
           filePath,
           colorPages,
           bwPages,
@@ -97,9 +97,9 @@ class PrintService {
       }
 
       // Jika tidak ada setting khusus, print semua halaman
-      return await this.printAllPagesWithNET(filePath, printerName, copies);
+      return await this.printAllPages(filePath, printerName, copies);
     } catch (error) {
-      console.error("❌ PowerShell .NET print failed:", error);
+      console.error("❌ Foxit print failed:", error);
       return {
         success: false,
         error: error.message,
@@ -108,7 +108,7 @@ class PrintService {
   }
 
   // PRINT: Color dan BW pages terpisah
-  async printColorBwWithNET(
+  async printColorBwSeparate(
     filePath,
     colorPages,
     bwPages,
@@ -121,26 +121,35 @@ class PrintService {
       // Print BW pages dengan grayscale
       if (bwPages.length > 0) {
         console.log(`⚫ Printing BW pages: ${bwPages.join(",")}`);
-        const bwResult = await this.printPagesWithNET(
+
+        // Set printer ke grayscale sebelum print
+        await this.setPrinterSettings(printerName, copies, true);
+
+        const bwResult = await this.printPagesWithFoxit(
           filePath,
           bwPages,
           printerName,
           copies,
-          true // grayscale = true
+          "bw"
         );
         results.push(bwResult);
+
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
       // Print Color pages dengan color
       if (colorPages.length > 0) {
         console.log(`🎨 Printing Color pages: ${colorPages.join(",")}`);
-        const colorResult = await this.printPagesWithNET(
+
+        // Set printer ke color sebelum print
+        await this.setPrinterSettings(printerName, copies, false);
+
+        const colorResult = await this.printPagesWithFoxit(
           filePath,
           colorPages,
           printerName,
           copies,
-          false // grayscale = false
+          "color"
         );
         results.push(colorResult);
       }
@@ -150,8 +159,8 @@ class PrintService {
       if (allSuccess) {
         return {
           success: true,
-          jobId: `net_${Date.now()}`,
-          method: "PowerShell .NET",
+          jobId: `color_bw_${Date.now()}`,
+          method: "Foxit with Color/BW Settings",
           output: `Printed ${bwPages.length} BW pages and ${colorPages.length} color pages`,
           details: results,
         };
@@ -164,117 +173,124 @@ class PrintService {
   }
 
   // PRINT: Semua halaman
-  async printAllPagesWithNET(filePath, printerName, copies) {
+  async printAllPages(filePath, printerName, copies) {
     try {
       console.log(`🖨️ Printing all pages with ${copies} copies`);
 
-      const command = this.buildPowerShellCommand(
-        filePath,
-        [],
-        printerName,
-        copies,
-        false
-      );
+      // Set printer settings
+      await this.setPrinterSettings(printerName, copies, false);
 
-      const { stdout, stderr } = await execPromise(command);
+      // Print dengan Foxit Reader
+      const foxitCommand = `"${this.foxitPath}" /t "${filePath}" "${printerName}"`;
+      console.log("🔧 Foxit command:", foxitCommand);
 
-      if (stdout.includes("SUCCESS")) {
-        return {
-          success: true,
-          jobId: `net_all_${Date.now()}`,
-          method: "PowerShell .NET All Pages",
-          output: stdout,
-        };
-      } else {
-        throw new Error(stderr || "Print failed");
+      const { stdout, stderr } = await execPromise(foxitCommand);
+
+      if (stderr && stderr.trim()) {
+        console.warn("⚠️ Foxit stderr:", stderr);
       }
+
+      console.log("✅ Foxit stdout:", stdout);
+
+      // Tunggu proses print selesai
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      return {
+        success: true,
+        jobId: `all_pages_${Date.now()}`,
+        method: "Foxit Reader",
+        output: stdout || `Printed ${copies} copies successfully`,
+      };
     } catch (error) {
       throw new Error(`All pages print failed: ${error.message}`);
     }
   }
 
-  // PRINT: Pages tertentu dengan setting grayscale
-  async printPagesWithNET(filePath, pages, printerName, copies, grayscale) {
+  // PRINT: Pages tertentu dengan Foxit
+  async printPagesWithFoxit(filePath, pages, printerName, copies, mode) {
     try {
       const pageRange = this.formatPageRange(pages);
-      const mode = grayscale ? "Grayscale" : "Color";
-
       console.log(
         `📄 Printing ${mode} pages: ${pageRange} with ${copies} copies`
       );
 
-      const command = this.buildPowerShellCommand(
-        filePath,
-        pages,
-        printerName,
-        copies,
-        grayscale
-      );
+      // Print multiple copies
+      for (let i = 0; i < copies; i++) {
+        console.log(`🖨️ Copy ${i + 1} of ${copies}`);
 
-      const { stdout, stderr } = await execPromise(command);
+        const foxitCommand = `"${this.foxitPath}" /t "${filePath}" "${printerName}"`;
+        await execPromise(foxitCommand);
 
-      if (stdout.includes("SUCCESS")) {
-        return {
-          success: true,
-          mode: mode.toLowerCase(),
-          pages: pages,
-          pageRange: pageRange,
-          copies: copies,
-          output: stdout,
-        };
-      } else {
-        throw new Error(stderr || `${mode} print failed`);
+        // Tunggu antara copies
+        if (i < copies - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
       }
+
+      return {
+        success: true,
+        mode: mode,
+        pages: pages,
+        copies: copies,
+        output: `Printed ${copies} copies of ${mode} pages`,
+      };
     } catch (error) {
       return {
         success: false,
-        mode: grayscale ? "bw" : "color",
+        mode: mode,
         pages: pages,
         error: error.message,
       };
     }
   }
 
-  // BUILD: PowerShell Command dengan .NET - YANG SUDAH DIPERBAIKI
-  buildPowerShellCommand(filePath, pages, printerName, copies, grayscale) {
-    const pageRangeString =
-      pages.length > 0 ? `[int[]]@(${pages.join(",")})` : "@()";
+  // SETTING: Atur printer settings melalui PowerShell
+  async setPrinterSettings(printerName, copies, grayscale) {
+    try {
+      console.log(
+        `⚙️ Setting printer: ${printerName}, Copies: ${copies}, Grayscale: ${grayscale}`
+      );
 
-    // Gunakan $true/$false yang benar untuk PowerShell
-    const colorSetting = grayscale ? "$false" : "$true";
+      const command =
+        `powershell -Command "` +
+        `Add-Type -AssemblyName System.Printing; ` +
+        `try { ` +
+        `  $printServer = New-Object System.Printing.LocalPrintServer; ` +
+        `  $printQueue = $printServer.GetPrintQueue('${printerName}'); ` +
+        `  $defaultPrintTicket = $printQueue.DefaultPrintTicket; ` +
+        `  ` +
+        `  # Set color/grayscale ` +
+        `  $defaultPrintTicket.OutputColor = ${
+          grayscale
+            ? "[System.Printing.OutputColor]::Monochrome"
+            : "[System.Printing.OutputColor]::Color"
+        }; ` +
+        `  ` +
+        `  # Set copies ` +
+        `  $defaultPrintTicket.CopyCount = ${copies}; ` +
+        `  ` +
+        `  # Apply settings ` +
+        `  $printQueue.DefaultPrintTicket = $defaultPrintTicket; ` +
+        `  ` +
+        `  Write-Output 'Printer settings updated successfully'; ` +
+        `} catch { ` +
+        `  Write-Error ('Failed to update printer settings: ' + $_.Exception.Message); ` +
+        `}"`;
 
-    return (
-      `powershell -Command "` +
-      `Add-Type -AssemblyName System.Drawing; ` +
-      `Add-Type -AssemblyName System.Printing; ` +
-      `try { ` +
-      `    $printDoc = New-Object System.Drawing.Printing.PrintDocument; ` +
-      `    $printDoc.PrinterSettings.PrinterName = '${printerName}'; ` +
-      `    $printDoc.PrinterSettings.Copies = ${copies}; ` +
-      `    $printDoc.DefaultPageSettings.Color = ${colorSetting}; ` + // Fixed: menggunakan $true/$false
-      `    ` +
-      `    $pages = ${pageRangeString}; ` +
-      `    if ($pages.Length -gt 0) { ` +
-      `        $printDoc.PrinterSettings.FromPage = ($pages | Sort-Object | Select-Object -First 1); ` +
-      `        $printDoc.PrinterSettings.ToPage = ($pages | Sort-Object | Select-Object -Last 1); ` +
-      `        $printDoc.PrinterSettings.PrintRange = [System.Drawing.Printing.PrintRange]::SomePages; ` +
-      `    } ` +
-      `    ` +
-      `    $printDoc.Add_PrintPage({ ` +
-      `        param($sender, $e); ` +
-      `        $e.HasMorePages = $false; ` +
-      `    }); ` +
-      `    ` +
-      `    $printDoc.Print(); ` +
-      `    Write-Output 'SUCCESS: Print job sent with .NET System.Printing'; ` +
-      `    Write-Output 'Settings: Copies=${copies}, Grayscale=${grayscale}, Pages=${
-        pages.length > 0 ? pages.join(",") : "all"
-      }'; ` +
-      `} catch { ` +
-      `    Write-Error ('FAILED: ' + $_.Exception.Message); ` +
-      `    exit 1; ` +
-      `}"`
-    );
+      const { stdout, stderr } = await execPromise(command);
+
+      if (stdout) {
+        console.log("✅ Printer settings:", stdout);
+      }
+      if (stderr) {
+        console.warn("⚠️ Printer settings warning:", stderr);
+      }
+
+      return true;
+    } catch (error) {
+      console.warn("⚠️ Could not update printer settings:", error.message);
+      return false; // Continue printing even if settings fail
+    }
   }
 
   // PARSER: Parse page range
@@ -318,29 +334,6 @@ class PrintService {
 
     ranges.push(start === end ? start.toString() : `${start}-${end}`);
     return ranges.join(",");
-  }
-
-  // Fallback ke Foxit Reader jika diperlukan
-  async tryFoxitReader(filePath, printerName, copies) {
-    try {
-      if (!(await this.fileExists(this.foxitPath))) {
-        return { success: false, error: "Foxit Reader not found" };
-      }
-
-      const foxitCommand = `"${this.foxitPath}" /t "${filePath}" "${printerName}"`;
-      await execPromise(foxitCommand);
-
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      return {
-        success: true,
-        jobId: `foxit_${Date.now()}`,
-        method: "Foxit Reader",
-        output: "Print job sent via Foxit Reader (limited settings)",
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
   }
 
   async fileExists(filePath) {

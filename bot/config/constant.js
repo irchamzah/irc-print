@@ -14,7 +14,7 @@ module.exports = {
   },
 
   PRINT_COSTS: {
-    COLOR: 1000,
+    COLOR: 1500,
     BW: 500,
   },
 
