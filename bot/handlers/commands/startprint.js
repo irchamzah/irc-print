@@ -1,4 +1,4 @@
-// bot/handlers/commands/startprint.js - TAMBAHKAN FILE CLEANUP
+// bot/handlers/commands/startprint.js - PASTIKAN TIDAK ADA PERUBAHAN
 const { userSessions } = require("../../config/session");
 const fileService = require("../../services/fileService");
 const printService = require("../../services/printService");
@@ -50,7 +50,7 @@ async function handleStartPrintCommand(ctx) {
 
     console.log("✅ File downloaded for printing:", downloadResult.filePath);
 
-    // Proses printing
+    // Proses printing - INI YANG MEMANGGIL printService.processPrint
     await ctx.reply("🖨️ Memulai proses printing...");
     const printResult = await printService.processPrint(userSession);
 
@@ -84,7 +84,7 @@ async function handleStartPrintCommand(ctx) {
     console.error("❌ Error in startprint:", error);
 
     // HAPUS FILE JIKA ADA ERROR (rollback)
-    if (userSession.fileInfo.localPath) {
+    if (userSession && userSession.fileInfo && userSession.fileInfo.localPath) {
       await fileService.deleteFile(userSession.fileInfo.localPath);
       console.log(
         `✅ File deleted due to error: ${userSession.fileInfo.localPath}`

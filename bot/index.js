@@ -5,6 +5,7 @@ const { message } = require("telegraf/filters");
 // Import session instance
 const { userSessions, startSessionCleanup } = require("./config/session");
 const { testMidtransConnection } = require("./utils/midtransTest");
+const { handlePrinterDebugCommand } = require("./handlers/commands/debug");
 
 // Import handlers dengan debugging
 console.log("🔍 Loading handlers...");
@@ -80,6 +81,7 @@ async function startBotServer(botToken) {
 
     bot.command("debug", handleDebugCommand);
     bot.command("debug_all", handleDebugAllCommand);
+    bot.command("printer_debug", handlePrinterDebugCommand);
     console.log("✅ debug commands registered");
 
     // Setup message handlers

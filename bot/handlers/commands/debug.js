@@ -1,5 +1,7 @@
 // bot/handlers/commands/debug.js
 const { userSessions } = require("../../config/session"); // Import instance
+const printerUtils = require("../../utils/printerUtils");
+const printService = require("../../services/printService");
 
 async function handleDebugCommand(ctx) {
   const userId = ctx.from.id;
@@ -66,4 +68,75 @@ async function handleDebugAllCommand(ctx) {
   console.log("📊 All sessions:", Array.from(userSessions.debugAll()));
 }
 
-module.exports = { handleDebugCommand, handleDebugAllCommand };
+async function handlePrinterDebugCommand(ctx) {
+  try {
+    await ctx.reply("🖨️ Checking printer status...");
+
+    // Deteksi semua printer dengan error handling
+    let allPrinters = [];
+    try {
+      allPrinters = await printerUtils.detectAllPrinters();
+    } catch (error) {
+      console.error("❌ Error detecting printers:", error);
+      await ctx.reply(
+        "❌ Gagal mendeteksi printer. Pastikan WMIC tersedia di Windows."
+      );
+      return;
+    }
+
+    // Test printer connection
+    const printerTest = await printerUtils.testPrinterConnection();
+
+    // Get available printers dengan error handling
+    let printersList = "Error getting printers";
+    try {
+      printersList = await printService.getAvailablePrinters();
+    } catch (error) {
+      console.error("❌ Error getting printers:", error);
+      printersList = "Cannot retrieve printer list";
+    }
+
+    let printerListText = "No printers found";
+    if (allPrinters.length > 0) {
+      printerListText = allPrinters
+        .map(
+          (p) => `${p.name} ${p.isDefault ? "📌 (DEFAULT)" : ""} - ${p.status}`
+        )
+        .join("\n");
+    }
+
+    const debugInfo = `
+🖨️ *PRINTER DEBUG INFO*
+
+✅ Printer Test: ${printerTest.success ? "SUCCESS" : "FAILED"}
+📄 Printer Name: ${printerTest.printerName}
+🔧 Printer Status: ${printerTest.status}
+${printerTest.message ? `💡 Message: ${printerTest.message}` : ""}
+${printerTest.error ? `❌ Error: ${printerTest.error}` : ""}
+
+📋 *DETECTED PRINTERS (${allPrinters.length}):*
+${printerListText}
+
+📜 *SYSTEM PRINTERS:*
+${printersList}
+
+💡 *NEXT STEPS:*
+1. Cek nama printer di atas
+2. Pastikan printer status "Ready" 
+3. Test dengan /startprint
+    `;
+
+    await ctx.reply(debugInfo, { parse_mode: "Markdown" });
+  } catch (error) {
+    console.error("❌ Printer debug error:", error);
+    await ctx.reply(
+      `❌ Printer debug failed: ${error.message}\n\nCoba periksa file printerUtils.js`
+    );
+  }
+}
+
+module.exports = {
+  handleDebugCommand,
+  handleDebugAllCommand,
+  handlePrinterDebugCommand,
+};
