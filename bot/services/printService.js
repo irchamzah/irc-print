@@ -1,4 +1,4 @@
-// bot/services/printService.js - GUNAKAN FULL PATH UNTUK SUMATRAPDF
+// bot/services/printService.js - GUNAKAN FOXIT READER
 const fs = require("fs").promises;
 const path = require("path");
 const { exec } = require("child_process");
@@ -14,10 +14,10 @@ class PrintService {
       "logs",
       "print-jobs.log"
     );
-    this.printerName = "EPSON L3150 Series";
-    // FULL PATH KE SUMATRAPDF
-    this.sumatraPath =
-      "C:\\Users\\User\\AppData\\Local\\SumatraPDF\\SumatraPDF.exe";
+    this.printerName = "Canon G1010 series";
+    // FULL PATH KE FOXIT READER
+    this.foxitPath =
+      "C:\\Program Files\\Foxit Software\\Foxit PDF Reader\\FoxitPDFReader.exe";
   }
 
   async getPrinterName() {
@@ -80,11 +80,11 @@ class PrintService {
 
       const copies = settings.copies || 1;
 
-      // COBA METODE DENGAN SUMATRAPDF DULU
+      // COBA METODE DENGAN FOXIT READER
       const methods = [
-        () => this.trySumatraPDF(filePath, printerName, copies),
-        () => this.tryPowerShellPrint(filePath, printerName, copies),
-        () => this.tryNetPrint(filePath, printerName, copies),
+        () => this.tryFoxitReader(filePath, printerName, copies),
+        () => this.tryFoxitWithPowerShell(filePath, printerName, copies),
+        () => this.tryFoxitSilentPrint(filePath, printerName, copies),
       ];
 
       for (const method of methods) {
@@ -106,75 +106,74 @@ class PrintService {
     }
   }
 
-  // METHOD 1: Gunakan SumatraPDF dengan full path
-  async trySumatraPDF(filePath, printerName, copies) {
+  // METHOD 1: Gunakan Foxit Reader dengan full path
+  async tryFoxitReader(filePath, printerName, copies) {
     try {
-      console.log("🔄 Trying SumatraPDF print method...");
+      console.log("🔄 Trying Foxit Reader print method...");
 
-      // Cek apakah file SumatraPDF exists
-      if (!(await this.fileExists(this.sumatraPath))) {
-        console.log("❌ SumatraPDF not found at:", this.sumatraPath);
+      // Cek apakah file Foxit Reader exists
+      if (!(await this.fileExists(this.foxitPath))) {
+        console.log("❌ Foxit Reader not found at:", this.foxitPath);
         return {
           success: false,
-          method: "SumatraPDF",
-          error: "SumatraPDF executable not found",
+          method: "Foxit Reader",
+          error: "Foxit Reader executable not found",
         };
       }
 
-      console.log("✅ SumatraPDF found at:", this.sumatraPath);
+      console.log("✅ Foxit Reader found at:", this.foxitPath);
 
-      // Print menggunakan SumatraPDF dengan full path
-      const sumatraCommand = `"${this.sumatraPath}" -print-to "${printerName}" -print-settings "copies=${copies}" "${filePath}"`;
-      console.log("🔧 SumatraPDF command:", sumatraCommand);
+      // Print menggunakan Foxit Reader dengan full path
+      // Foxit Reader menggunakan parameter /p untuk print dan /t untuk terminate setelah print
+      const foxitCommand = `"${this.foxitPath}" /t "${filePath}" "${printerName}"`;
+      console.log("🔧 Foxit Reader command:", foxitCommand);
 
-      const { stdout, stderr } = await execPromise(sumatraCommand);
+      const { stdout, stderr } = await execPromise(foxitCommand);
 
       if (stderr && stderr.trim()) {
-        console.warn("⚠️ SumatraPDF stderr:", stderr);
+        console.warn("⚠️ Foxit Reader stderr:", stderr);
       }
 
-      console.log("✅ SumatraPDF stdout:", stdout);
+      console.log("✅ Foxit Reader stdout:", stdout);
 
-      // SumatraPDF biasanya tidak return output jika success
       // Tunggu sebentar untuk memastikan print job diproses
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       return {
         success: true,
-        jobId: `sumatra_${Date.now()}`,
-        method: "SumatraPDF",
-        output: stdout || "Print job sent via SumatraPDF",
+        jobId: `foxit_${Date.now()}`,
+        method: "Foxit Reader",
+        output: stdout || "Print job sent via Foxit Reader",
       };
     } catch (error) {
-      console.error("❌ SumatraPDF print error:", error);
-      return { success: false, method: "SumatraPDF", error: error.message };
+      console.error("❌ Foxit Reader print error:", error);
+      return { success: false, method: "Foxit Reader", error: error.message };
     }
   }
 
-  // METHOD 2: PowerShell dengan approach berbeda
-  async tryPowerShellPrint(filePath, printerName, copies) {
+  // METHOD 2: Foxit Reader dengan PowerShell
+  async tryFoxitWithPowerShell(filePath, printerName, copies) {
     try {
-      console.log("🔄 Trying PowerShell print method...");
+      console.log("🔄 Trying Foxit Reader with PowerShell method...");
 
       const command =
         `powershell -Command "` +
         `try { ` +
-        `  # Coba gunakan Start-Process dengan SumatraPDF ` +
-        `  $$sumatraPath = '${this.sumatraPath}'; ` +
-        `  if (Test-Path $$sumatraPath) { ` +
-        `    $$arguments = '-print-to \"${printerName}\" -print-settings \"copies=${copies}\" \"${filePath}\"'; ` +
-        `    $$process = Start-Process -FilePath $$sumatraPath -ArgumentList $$arguments -WindowStyle Hidden -PassThru; ` +
+        `  $$foxitPath = '${this.foxitPath}'; ` +
+        `  if (Test-Path $$foxitPath) { ` +
+        `    $$arguments = '/t \"${filePath}\" \"${printerName}\"'; ` +
+        `    $$process = Start-Process -FilePath $$foxitPath -ArgumentList $$arguments -WindowStyle Hidden -PassThru; ` +
         `    $$process.WaitForExit(30000); ` +
         `    if ($$process.ExitCode -eq 0) { ` +
-        `      Write-Output 'PowerShell + SumatraPDF print job sent successfully'; ` +
+        `      Write-Output 'Foxit Reader print job sent successfully'; ` +
         `    } else { ` +
-        `      Write-Error 'SumatraPDF process failed with exit code: ' + $$process.ExitCode; ` +
+        `      Write-Error 'Foxit Reader process failed with exit code: ' + $$process.ExitCode; ` +
         `    } ` +
         `  } else { ` +
-        `    Write-Error 'SumatraPDF not found at: ' + $$sumatraPath; ` +
+        `    Write-Error 'Foxit Reader not found at: ' + $$foxitPath; ` +
         `  } ` +
         `} catch { ` +
-        `  Write-Error ('PowerShell print failed: ' + $$_.Exception.Message); ` +
+        `  Write-Error ('Foxit Reader PowerShell print failed: ' + $$_.Exception.Message); ` +
         `}"`;
 
       const { stdout, stderr } = await execPromise(command);
@@ -182,71 +181,56 @@ class PrintService {
       if (stdout && stdout.includes("successfully")) {
         return {
           success: true,
-          jobId: `powershell_${Date.now()}`,
-          method: "PowerShell + SumatraPDF",
+          jobId: `foxit_ps_${Date.now()}`,
+          method: "Foxit Reader + PowerShell",
           output: stdout,
         };
       }
       return {
         success: false,
-        method: "PowerShell + SumatraPDF",
+        method: "Foxit Reader + PowerShell",
         error: stderr || "Unknown error",
       };
     } catch (error) {
       return {
         success: false,
-        method: "PowerShell + SumatraPDF",
+        method: "Foxit Reader + PowerShell",
         error: error.message,
       };
     }
   }
 
-  // METHOD 3: .NET System.Printing (fallback)
-  async tryNetPrint(filePath, printerName, copies) {
+  // METHOD 3: Foxit Reader Silent Print (alternatif parameter)
+  async tryFoxitSilentPrint(filePath, printerName, copies) {
     try {
-      console.log("🔄 Trying .NET System.Printing method...");
+      console.log("🔄 Trying Foxit Reader Silent Print method...");
 
-      const command =
-        `powershell -Command "` +
-        `Add-Type -AssemblyName System.Printing; ` +
-        `` +
-        `try { ` +
-        `  $$printServer = New-Object System.Printing.LocalPrintServer; ` +
-        `  $$printQueue = $$printServer.GetPrintQueue('${printerName}'); ` +
-        `  ` +
-        `  if ($$printQueue.IsOffline) { ` +
-        `    Write-Error 'Printer is offline'; ` +
-        `  } else { ` +
-        `    Write-Output 'Printer is online: ${printerName}'; ` +
-        `    ` +
-        `    # Untuk actual printing, kita tetap butuh SumatraPDF atau tool lain ` +
-        `    # Karena .NET tidak bisa handle PDF langsung ` +
-        `    $$sumatraPath = '${this.sumatraPath}'; ` +
-        `    if (Test-Path $$sumatraPath) { ` +
-        `      $$arguments = '-print-to \"${printerName}\" -print-settings \"copies=${copies}\" \"${filePath}\"'; ` +
-        `      Start-Process -FilePath $$sumatraPath -ArgumentList $$arguments -WindowStyle Hidden; ` +
-        `      Write-Output '.NET validated + SumatraPDF print sent'; ` +
-        `    } ` +
-        `  } ` +
-        `} catch { ` +
-        `  Write-Error ('.NET print failed: ' + $$_.Exception.Message); ` +
-        `}"`;
+      // Alternatif parameter untuk Foxit Reader
+      const foxitCommand = `"${this.foxitPath}" /p "${filePath}"`;
+      console.log("🔧 Foxit Silent Print command:", foxitCommand);
 
-      const { stdout } = await execPromise(command);
+      const { stdout, stderr } = await execPromise(foxitCommand);
 
-      if (stdout && stdout.includes("print sent")) {
-        return {
-          success: true,
-          jobId: `dotnet_${Date.now()}`,
-          method: ".NET + SumatraPDF",
-          output: stdout,
-        };
+      if (stderr && stderr.trim()) {
+        console.warn("⚠️ Foxit Silent Print stderr:", stderr);
       }
-      return { success: false, method: ".NET System.Printing" };
+
+      console.log("✅ Foxit Silent Print stdout:", stdout);
+
+      // Tunggu sebentar untuk memastikan print job diproses
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      return {
+        success: true,
+        jobId: `foxit_silent_${Date.now()}`,
+        method: "Foxit Reader Silent Print",
+        output: stdout || "Print job sent via Foxit Reader Silent Print",
+      };
     } catch (error) {
+      console.error("❌ Foxit Silent Print error:", error);
       return {
         success: false,
-        method: ".NET System.Printing",
+        method: "Foxit Reader Silent Print",
         error: error.message,
       };
     }
