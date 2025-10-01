@@ -1,6 +1,6 @@
 function setupHandlers(bot) {
   bot.start((ctx) => {
-    ctx.reply("Welcome to Print24Jam Bot!");
+    ctx.reply("Welcome to IrcPrint Bot!");
   });
 
   bot.on("document", async (ctx) => {

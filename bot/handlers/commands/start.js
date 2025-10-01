@@ -41,7 +41,7 @@ async function handleStartCommand(ctx) {
     }
   } else {
     await ctx.reply(
-      "🖨️ Selamat datang di Print24Jam Bot!\n\nKirim file PDF yang ingin dicetak, lalu ikuti instruksi selanjutnya."
+      "🖨️ Selamat datang di IrcPrint Bot!\n\nKirim file PDF yang ingin dicetak, lalu ikuti instruksi selanjutnya."
     );
   }
 }

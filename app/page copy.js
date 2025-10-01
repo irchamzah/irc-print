@@ -28,10 +28,10 @@ export default function PrintService() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Head>
-        <title>Print24Jam - Jasa Print 24 Jam</title>
+        <title>Irc Print - Jasa Print</title>
         <meta
           name="description"
-          content="Layanan print 24 jam online dengan pembayaran QRIS"
+          content="Layanan print online dengan pembayaran QRIS"
         />
       </Head>
 
@@ -39,9 +39,9 @@ export default function PrintService() {
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
-              Print24Jam
+              Irc Print
             </h1>
-            <p className="text-gray-600">Layanan Cetak Online 24 Jam</p>
+            <p className="text-gray-600">Layanan Print Online</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -264,8 +264,7 @@ export default function PrintService() {
 
         <footer className="text-center text-gray-500 text-sm">
           <p>
-            © {new Date().getFullYear()} Print24Jam - Layanan Cetak 24 Jam
-            Online
+            © {new Date().getFullYear()} IrcPrint - Layanan Print Online Online
           </p>
         </footer>
       </main>

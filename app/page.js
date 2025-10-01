@@ -142,7 +142,7 @@ export default function PrintService() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Head>
-        <title>Print24Jam - Jasa Print 24 Jam</title>
+        <title>Irc Print - Jasa Print Online</title>
         <meta
           name="description"
           content="Layanan print 24 jam online dengan pembayaran QRIS"
@@ -154,10 +154,10 @@ export default function PrintService() {
         <div className="bg-white rounded-xl shadow-lg p-4 md:p-8 mb-6 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
             <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-2">
-              Print24Jam
+              Irc Print
             </h1>
             <p className="text-sm md:text-base text-gray-600">
-              Layanan Cetak Online 24 Jam
+              Layanan Print Online
             </p>
           </div>
 
