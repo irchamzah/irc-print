@@ -1,37 +1,25 @@
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
+// utils/pdfUtils.js
+import * as pdfjsLib from "pdfjs-dist";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Gunakan worker yang sama dengan PDFPreview
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
 
 export async function getPDFPageCount(file) {
-  return new Promise((resolve, reject) => {
-    const fileReader = new FileReader();
-
-    fileReader.onload = async function (event) {
-      try {
-        const arrayBuffer = event.target.result;
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        resolve(pdf.numPages);
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    fileReader.onerror = function (error) {
-      reject(error);
-    };
-
-    fileReader.readAsArrayBuffer(file);
-  });
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    return pdf.numPages;
+  } catch (error) {
+    console.error("Error getting PDF page count:", error);
+    throw error;
+  }
 }
 
 export function validatePDFFile(file) {
-  // Cek type file
   if (file.type !== "application/pdf") {
     return { isValid: false, error: "Hanya file PDF yang diperbolehkan!" };
   }
 
-  // Cek size file (max 10MB)
   if (file.size > 10 * 1024 * 1024) {
     return { isValid: false, error: "File terlalu besar! Maksimal 10MB." };
   }

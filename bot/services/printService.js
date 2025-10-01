@@ -1,4 +1,4 @@
-// bot/services/printService.js - SOLUSI YANG BENAR
+// bot/services/printService.js - VERSI DIPERBAIKI
 const fs = require("fs").promises;
 const path = require("path");
 const { exec } = require("child_process");
@@ -13,9 +13,11 @@ class PrintService {
       "logs",
       "print-jobs.log"
     );
-    this.printerName = "Canon G1010 series";
-    this.foxitPath =
-      "C:\\Program Files\\Foxit Software\\Foxit PDF Reader\\FoxitPDFReader.exe";
+    this.printerName = "EPSON L3150 Series";
+    this.ghostscriptPath =
+      "C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe";
+    this.pdftkPath = "C:\\Program Files (x86)\\PDFtk Server\\bin\\pdftk.exe";
+    this.tempDir = path.join(process.cwd(), "storage", "temp");
   }
 
   async getPrinterName() {
@@ -27,7 +29,7 @@ class PrintService {
       const printerName = await this.getPrinterName();
       const { fileInfo, settings, userId } = userSession;
 
-      console.log("🖨️ Starting REAL print process:", {
+      console.log("🖨️ Starting structured print process:", {
         file: fileInfo.fileName,
         printer: printerName,
         settings: settings,
@@ -38,8 +40,9 @@ class PrintService {
         throw new Error("File tidak ditemukan untuk printing");
       }
 
-      // Gunakan metode yang benar dengan Foxit Reader
-      const printResult = await this.printWithFoxitAndSettings(
+      await this.ensureTempDirectory();
+
+      const printResult = await this.structuredPrintProcess(
         fileInfo.localPath,
         settings,
         printerName
@@ -69,14 +72,18 @@ class PrintService {
     }
   }
 
-  // METODE UTAMA: Print dengan Foxit Reader dan setting printer
-  async printWithFoxitAndSettings(filePath, settings, printerName) {
-    try {
-      console.log("🔄 Using Foxit Reader with printer settings...");
+  // METODE UTAMA: Structured print process
+  async structuredPrintProcess(filePath, settings, printerName) {
+    let tempFiles = []; // Deklarasi di sini agar bisa di-cleanup
 
+    try {
       const copies = settings.copies || 1;
-      const colorPages = this.parsePageRange(settings.color);
-      const bwPages = this.parsePageRange(settings.bw);
+
+      // FIX: Gunakan property yang benar dari settings
+      const colorPages = Array.isArray(settings.colorPages)
+        ? settings.colorPages
+        : [];
+      const bwPages = Array.isArray(settings.bwPages) ? settings.bwPages : [];
 
       console.log("📋 Print Settings:", {
         copies: copies,
@@ -85,255 +92,306 @@ class PrintService {
         printer: printerName,
       });
 
-      // Jika ada setting color/bw, proses terpisah
-      if (colorPages.length > 0 || bwPages.length > 0) {
-        return await this.printColorBwSeparate(
-          filePath,
-          colorPages,
-          bwPages,
+      // Jika tidak ada setting khusus, print semua halaman normal
+      if (colorPages.length === 0 && bwPages.length === 0) {
+        console.log("🔄 No color/bw settings, printing all pages normally");
+        return await this.directPrint(filePath, printerName, copies);
+      }
+
+      // STEP 1: Split file dengan PDFTK berdasarkan halaman BW dan Color
+      console.log("📑 STEP 1: Splitting PDF with PDFTK...");
+
+      const splitResult = await this.splitPDFWithPDFTK(
+        filePath,
+        bwPages,
+        colorPages
+      );
+
+      if (!splitResult.success) {
+        throw new Error(`PDF splitting failed: ${splitResult.error}`);
+      }
+
+      const { bwFile, colorFile } = splitResult;
+
+      // Hanya push file yang berhasil dibuat
+      if (bwFile) tempFiles.push(bwFile);
+      if (colorFile) tempFiles.push(colorFile);
+
+      console.log("✅ PDF Splitting completed:");
+      if (bwFile) console.log(`   - BW File: ${bwFile}`);
+      if (colorFile) console.log(`   - Color File: ${colorFile}`);
+
+      // STEP 2: Convert BW file ke grayscale dengan Ghostscript
+      let finalBWFile = bwFile;
+
+      if (bwPages.length > 0 && bwFile) {
+        console.log("🎨 STEP 2: Converting BW file to grayscale...");
+
+        const convertResult = await this.convertToGrayscale(bwFile);
+
+        if (!convertResult.success) {
+          throw new Error(
+            `Grayscale conversion failed: ${convertResult.error}`
+          );
+        }
+
+        finalBWFile = convertResult.outputPath;
+        tempFiles.push(finalBWFile);
+        console.log(`✅ Grayscale conversion completed: ${finalBWFile}`);
+      }
+
+      // STEP 3: Print files
+      console.log("🖨️ STEP 3: Printing files...");
+
+      let printResults = [];
+
+      // Print BW file (grayscale)
+      if (bwPages.length > 0 && finalBWFile) {
+        console.log(`⚫ Printing BW pages: ${bwPages.join(",")}`);
+        const bwPrintResult = await this.directPrint(
+          finalBWFile,
           printerName,
           copies
         );
-      }
-
-      // Jika tidak ada setting khusus, print semua halaman
-      return await this.printAllPages(filePath, printerName, copies);
-    } catch (error) {
-      console.error("❌ Foxit print failed:", error);
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-  }
-
-  // PRINT: Color dan BW pages terpisah
-  async printColorBwSeparate(
-    filePath,
-    colorPages,
-    bwPages,
-    printerName,
-    copies
-  ) {
-    try {
-      let results = [];
-
-      // Print BW pages dengan grayscale
-      if (bwPages.length > 0) {
-        console.log(`⚫ Printing BW pages: ${bwPages.join(",")}`);
-
-        // Set printer ke grayscale sebelum print
-        await this.setPrinterSettings(printerName, copies, true);
-
-        const bwResult = await this.printPagesWithFoxit(
-          filePath,
-          bwPages,
-          printerName,
-          copies,
-          "bw"
-        );
-        results.push(bwResult);
+        printResults.push({ type: "bw", ...bwPrintResult });
 
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
-      // Print Color pages dengan color
-      if (colorPages.length > 0) {
+      // Print Color file
+      if (colorPages.length > 0 && colorFile) {
         console.log(`🎨 Printing Color pages: ${colorPages.join(",")}`);
-
-        // Set printer ke color sebelum print
-        await this.setPrinterSettings(printerName, copies, false);
-
-        const colorResult = await this.printPagesWithFoxit(
-          filePath,
-          colorPages,
+        const colorPrintResult = await this.directPrint(
+          colorFile,
           printerName,
-          copies,
-          "color"
+          copies
         );
-        results.push(colorResult);
+        printResults.push({ type: "color", ...colorPrintResult });
       }
 
-      const allSuccess = results.every((result) => result.success);
+      // STEP 4: Cleanup temporary files
+      console.log("🧹 STEP 4: Cleaning up temporary files...");
+      await this.cleanupTempFiles(tempFiles);
+
+      const allSuccess = printResults.every((result) => result.success);
 
       if (allSuccess) {
         return {
           success: true,
-          jobId: `color_bw_${Date.now()}`,
-          method: "Foxit with Color/BW Settings",
+          jobId: `structured_${Date.now()}`,
+          method: "Structured PDFTK + Ghostscript",
           output: `Printed ${bwPages.length} BW pages and ${colorPages.length} color pages`,
-          details: results,
+          details: {
+            splitFiles: { bw: bwFile, color: colorFile },
+            finalFiles: { bw: finalBWFile, color: colorFile },
+            printResults: printResults,
+          },
         };
       } else {
         throw new Error("Some print jobs failed");
       }
     } catch (error) {
-      throw new Error(`Color/BW print failed: ${error.message}`);
-    }
-  }
+      console.error("❌ Structured print process failed:", error);
 
-  // PRINT: Semua halaman
-  async printAllPages(filePath, printerName, copies) {
-    try {
-      console.log(`🖨️ Printing all pages with ${copies} copies`);
-
-      // Set printer settings
-      await this.setPrinterSettings(printerName, copies, false);
-
-      // Print dengan Foxit Reader
-      const foxitCommand = `"${this.foxitPath}" /t "${filePath}" "${printerName}"`;
-      console.log("🔧 Foxit command:", foxitCommand);
-
-      const { stdout, stderr } = await execPromise(foxitCommand);
-
-      if (stderr && stderr.trim()) {
-        console.warn("⚠️ Foxit stderr:", stderr);
+      // Cleanup temp files even if failed
+      try {
+        await this.cleanupTempFiles(tempFiles);
+      } catch (cleanupError) {
+        console.warn("⚠️ Cleanup failed:", cleanupError.message);
       }
 
-      console.log("✅ Foxit stdout:", stdout);
-
-      // Tunggu proses print selesai
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      return {
-        success: true,
-        jobId: `all_pages_${Date.now()}`,
-        method: "Foxit Reader",
-        output: stdout || `Printed ${copies} copies successfully`,
-      };
-    } catch (error) {
-      throw new Error(`All pages print failed: ${error.message}`);
-    }
-  }
-
-  // PRINT: Pages tertentu dengan Foxit
-  async printPagesWithFoxit(filePath, pages, printerName, copies, mode) {
-    try {
-      const pageRange = this.formatPageRange(pages);
-      console.log(
-        `📄 Printing ${mode} pages: ${pageRange} with ${copies} copies`
-      );
-
-      // Print multiple copies
-      for (let i = 0; i < copies; i++) {
-        console.log(`🖨️ Copy ${i + 1} of ${copies}`);
-
-        const foxitCommand = `"${this.foxitPath}" /t "${filePath}" "${printerName}"`;
-        await execPromise(foxitCommand);
-
-        // Tunggu antara copies
-        if (i < copies - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      }
-
-      return {
-        success: true,
-        mode: mode,
-        pages: pages,
-        copies: copies,
-        output: `Printed ${copies} copies of ${mode} pages`,
-      };
-    } catch (error) {
       return {
         success: false,
-        mode: mode,
-        pages: pages,
         error: error.message,
       };
     }
   }
 
-  // SETTING: Atur printer settings melalui PowerShell
-  async setPrinterSettings(printerName, copies, grayscale) {
+  // SPLIT PDF: Split PDF dengan PDFTK menjadi BW dan Color files
+  async splitPDFWithPDFTK(inputPath, bwPages, colorPages) {
     try {
+      const baseName = path.basename(inputPath, ".pdf");
+      const bwOutputPath = path.join(this.tempDir, `${baseName}-gray.pdf`);
+      const colorOutputPath = path.join(this.tempDir, `${baseName}-color.pdf`);
+
+      console.log(`📑 Splitting PDF: ${path.basename(inputPath)}`);
       console.log(
-        `⚙️ Setting printer: ${printerName}, Copies: ${copies}, Grayscale: ${grayscale}`
+        `   - BW Pages: ${bwPages.length > 0 ? bwPages.join(",") : "none"}`
+      );
+      console.log(
+        `   - Color Pages: ${
+          colorPages.length > 0 ? colorPages.join(",") : "none"
+        }`
       );
 
-      const command =
-        `powershell -Command "` +
-        `Add-Type -AssemblyName System.Printing; ` +
-        `try { ` +
-        `  $printServer = New-Object System.Printing.LocalPrintServer; ` +
-        `  $printQueue = $printServer.GetPrintQueue('${printerName}'); ` +
-        `  $defaultPrintTicket = $printQueue.DefaultPrintTicket; ` +
-        `  ` +
-        `  # Set color/grayscale ` +
-        `  $defaultPrintTicket.OutputColor = ${
-          grayscale
-            ? "[System.Printing.OutputColor]::Monochrome"
-            : "[System.Printing.OutputColor]::Color"
-        }; ` +
-        `  ` +
-        `  # Set copies ` +
-        `  $defaultPrintTicket.CopyCount = ${copies}; ` +
-        `  ` +
-        `  # Apply settings ` +
-        `  $printQueue.DefaultPrintTicket = $defaultPrintTicket; ` +
-        `  ` +
-        `  Write-Output 'Printer settings updated successfully'; ` +
-        `} catch { ` +
-        `  Write-Error ('Failed to update printer settings: ' + $_.Exception.Message); ` +
-        `}"`;
+      let bwFileCreated = false;
+      let colorFileCreated = false;
 
-      const { stdout, stderr } = await execPromise(command);
+      // Split BW pages
+      if (bwPages.length > 0) {
+        const bwPagesStr = bwPages.join(" ");
+        const bwCommand = `"${this.pdftkPath}" "${inputPath}" cat ${bwPagesStr} output "${bwOutputPath}"`;
 
-      if (stdout) {
-        console.log("✅ Printer settings:", stdout);
-      }
-      if (stderr) {
-        console.warn("⚠️ Printer settings warning:", stderr);
-      }
+        console.log(`🔧 PDFTK BW Command:`, bwCommand);
+        await execPromise(bwCommand, { timeout: 30000 });
 
-      return true;
-    } catch (error) {
-      console.warn("⚠️ Could not update printer settings:", error.message);
-      return false; // Continue printing even if settings fail
-    }
-  }
-
-  // PARSER: Parse page range
-  parsePageRange(rangeString) {
-    if (!rangeString) return [];
-
-    const pages = [];
-    const parts = rangeString.split(",");
-
-    for (const part of parts) {
-      if (part.includes("-")) {
-        const [start, end] = part.split("-").map(Number);
-        for (let i = start; i <= end; i++) {
-          pages.push(i);
+        if (await this.fileExists(bwOutputPath)) {
+          const stats = await fs.stat(bwOutputPath);
+          console.log(
+            `✅ BW file created: ${bwOutputPath} (${stats.size} bytes)`
+          );
+          bwFileCreated = true;
+        } else {
+          console.warn("⚠️ BW file not created after PDFTK command");
         }
-      } else {
-        pages.push(Number(part));
       }
-    }
 
-    return [...new Set(pages)].sort((a, b) => a - b);
+      // Split Color pages
+      if (colorPages.length > 0) {
+        const colorPagesStr = colorPages.join(" ");
+        const colorCommand = `"${this.pdftkPath}" "${inputPath}" cat ${colorPagesStr} output "${colorOutputPath}"`;
+
+        console.log(`🔧 PDFTK Color Command:`, colorCommand);
+        await execPromise(colorCommand, { timeout: 30000 });
+
+        if (await this.fileExists(colorOutputPath)) {
+          const stats = await fs.stat(colorOutputPath);
+          console.log(
+            `✅ Color file created: ${colorOutputPath} (${stats.size} bytes)`
+          );
+          colorFileCreated = true;
+        } else {
+          console.warn("⚠️ Color file not created after PDFTK command");
+        }
+      }
+
+      return {
+        success: true,
+        bwFile: bwFileCreated ? bwOutputPath : null,
+        colorFile: colorFileCreated ? colorOutputPath : null,
+        bwPages: bwPages,
+        colorPages: colorPages,
+      };
+    } catch (error) {
+      console.error("❌ PDFTK splitting failed:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
   }
 
-  // FORMATTER: Format page range
-  formatPageRange(pages) {
-    if (pages.length === 0) return "all";
+  // CONVERT TO GRAYSCALE: Convert PDF ke grayscale dengan Ghostscript
+  async convertToGrayscale(inputPath) {
+    try {
+      const baseName = path.basename(inputPath, ".pdf");
+      const outputPath = path.join(this.tempDir, `${baseName}-converted.pdf`);
 
-    const ranges = [];
-    let start = pages[0];
-    let end = pages[0];
+      // Gunakan parameter yang proven bekerja untuk grayscale
+      const gsCommand =
+        `"${this.ghostscriptPath}" -dNOPAUSE -dBATCH -sDEVICE=pdfwrite ` +
+        `-sColorConversionStrategy=Gray ` +
+        `-dProcessColorModel=/DeviceGray ` +
+        `-dCompatibilityLevel=1.4 ` +
+        `-dPDFSETTINGS=/prepress ` +
+        `-dNOPAUSE ` +
+        `-dBATCH ` +
+        `-dQUIET ` +
+        `-sOutputFile="${outputPath}" ` +
+        `"${inputPath}"`;
 
-    for (let i = 1; i < pages.length; i++) {
-      if (pages[i] === end + 1) {
-        end = pages[i];
+      console.log(`🔧 Ghostscript Grayscale Command:`, gsCommand);
+
+      const { stdout, stderr } = await execPromise(gsCommand, {
+        timeout: 60000,
+      });
+
+      if (stdout) console.log("✅ Conversion stdout:", stdout);
+      if (stderr) console.warn("⚠️ Conversion stderr:", stderr);
+
+      if (await this.fileExists(outputPath)) {
+        const stats = await fs.stat(outputPath);
+        console.log(
+          `✅ Grayscale conversion successful: ${outputPath} (${stats.size} bytes)`
+        );
+
+        return {
+          success: true,
+          outputPath: outputPath,
+          fileSize: stats.size,
+          command: gsCommand,
+        };
       } else {
-        ranges.push(start === end ? start.toString() : `${start}-${end}`);
-        start = pages[i];
-        end = pages[i];
+        throw new Error("Grayscale conversion failed - no output file created");
       }
+    } catch (error) {
+      console.error("❌ Grayscale conversion failed:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
     }
+  }
 
-    ranges.push(start === end ? start.toString() : `${start}-${end}`);
-    return ranges.join(",");
+  // DIRECT PRINT: Print PDF file
+  async directPrint(filePath, printerName, copies) {
+    try {
+      console.log(
+        `🖨️ Printing: ${path.basename(filePath)} with ${copies} copies`
+      );
+
+      for (let copy = 1; copy <= copies; copy++) {
+        console.log(`   Copy ${copy} of ${copies}`);
+
+        const gsCommand = `"${this.ghostscriptPath}" -dNOPAUSE -dBATCH -sDEVICE=mswinpr2 -sOutputFile="%printer%${printerName}" -f "${filePath}"`;
+
+        const { stdout, stderr } = await execPromise(gsCommand, {
+          timeout: 30000,
+        });
+
+        if (stdout) console.log("   Print stdout:", stdout);
+        if (stderr) console.warn("   Print stderr:", stderr);
+
+        if (copy < copies) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+
+      return {
+        success: true,
+        output: `Printed ${copies} copies successfully`,
+      };
+    } catch (error) {
+      console.error("❌ Print failed:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  // UTILITY: Buat temp directory
+  async ensureTempDirectory() {
+    try {
+      await fs.access(this.tempDir);
+    } catch (error) {
+      await fs.mkdir(this.tempDir, { recursive: true });
+      console.log("✅ Temp directory created:", this.tempDir);
+    }
+  }
+
+  // UTILITY: Cleanup temporary files
+  async cleanupTempFiles(filePaths) {
+    try {
+      for (const filePath of filePaths) {
+        if (filePath && (await this.fileExists(filePath))) {
+          await fs.unlink(filePath);
+          console.log(`🗑️ Cleaned up: ${path.basename(filePath)}`);
+        }
+      }
+    } catch (error) {
+      console.warn("⚠️ Error cleaning up temp files:", error.message);
+    }
   }
 
   async fileExists(filePath) {

@@ -5,7 +5,7 @@ const execPromise = util.promisify(exec);
 
 class PrinterUtils {
   constructor() {
-    this.defaultPrinter = "Canon G1010 series";
+    this.defaultPrinter = "EPSON L3150 Series";
   }
 
   // METHOD YANG DIPANGGIL OLEH debug.js - TAMBAHKAN INI
