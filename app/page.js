@@ -23,7 +23,7 @@ export default function PrintService() {
   const [copyStatus, setCopyStatus] = useState("");
 
   const calculateCost = (settings = advancedSettings) => {
-    const colorCost = settings.colorPages.length * 1000;
+    const colorCost = settings.colorPages.length * 1500;
     const bwCost = settings.bwPages.length * 500;
     const totalCost = (colorCost + bwCost) * settings.copies;
     setCost(totalCost);

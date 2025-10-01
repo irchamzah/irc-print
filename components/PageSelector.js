@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 
-// Lazy load PDFPreview
 const PDFPreview = dynamic(() => import("./PDFPreview"), {
   ssr: false,
   loading: () => (
@@ -22,7 +21,8 @@ const PageSelector = ({
   file,
 }) => {
   const [selections, setSelections] = useState([]);
-  const [visiblePages, setVisiblePages] = useState(6); // Tampilkan 6 halaman pertama dulu
+  const [visiblePages, setVisiblePages] = useState(6);
+  const [renderErrors, setRenderErrors] = useState({});
 
   useEffect(() => {
     const initialSelections = Array.from({ length: totalPages }, (_, i) => ({
@@ -56,14 +56,16 @@ const PageSelector = ({
     });
   };
 
-  const loadMorePages = () => {
-    setVisiblePages((prev) => prev + 6); // Load 6 halaman tambahan
+  const handleRenderError = (pageNumber) => {
+    setRenderErrors((prev) => ({ ...prev, [pageNumber]: true }));
   };
 
-  // Fungsi untuk mengelompokkan halaman berurutan
+  const loadMorePages = () => {
+    setVisiblePages((prev) => prev + 6);
+  };
+
   const groupConsecutive = (pages) => {
     if (pages.length === 0) return [];
-
     pages.sort((a, b) => a - b);
     const result = [];
     let start = pages[0];
@@ -78,7 +80,6 @@ const PageSelector = ({
       }
     }
     result.push(start === end ? `${start}` : `${start}-${end}`);
-
     return result;
   };
 
@@ -118,9 +119,19 @@ const PageSelector = ({
                 Halaman {page}
               </div>
 
-              {/* PDF Preview */}
+              {/* PDF Preview dengan error handling */}
               <div className="mx-auto mb-3" style={{ width: 100, height: 140 }}>
-                <PDFPreview file={file} pageNumber={page} />
+                {renderErrors[page] ? (
+                  <div className="w-full h-full bg-red-50 flex items-center justify-center rounded border border-red-200">
+                    <span className="text-red-600 text-xs">Gagal memuat</span>
+                  </div>
+                ) : (
+                  <PDFPreview
+                    file={file}
+                    pageNumber={page}
+                    onRender={() => {}}
+                  />
+                )}
               </div>
 
               <select
@@ -144,7 +155,6 @@ const PageSelector = ({
         ))}
       </div>
 
-      {/* Load More Button untuk PDF dengan banyak halaman */}
       {visiblePages < totalPages && (
         <div className="text-center mb-6">
           <button

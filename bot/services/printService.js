@@ -1,4 +1,4 @@
-// bot/services/printService.js - VERSI URUTAN PRINT
+// bot/services/printService.js - VERSI DIPERBAIKI
 const fs = require("fs").promises;
 const path = require("path");
 const { exec } = require("child_process");
@@ -72,12 +72,14 @@ class PrintService {
     }
   }
 
-  // METODE UTAMA: Structured print process dengan urutan
+  // METODE UTAMA: Structured print process
   async structuredPrintProcess(filePath, settings, printerName) {
-    let tempFiles = [];
+    let tempFiles = []; // Deklarasi di sini agar bisa di-cleanup
 
     try {
       const copies = settings.copies || 1;
+
+      // FIX: Gunakan property yang benar dari settings
       const colorPages = Array.isArray(settings.colorPages)
         ? settings.colorPages
         : [];
@@ -96,58 +98,92 @@ class PrintService {
         return await this.directPrint(filePath, printerName, copies);
       }
 
-      // STEP 1: Buat urutan print berdasarkan nomor halaman
-      console.log("📑 STEP 1: Creating print order by page number...");
+      // STEP 1: Split file dengan PDFTK berdasarkan halaman BW dan Color
+      console.log("📑 STEP 1: Splitting PDF with PDFTK...");
 
-      const printOrder = this.createPrintOrder(bwPages, colorPages);
-      console.log("🔄 Print Order:", printOrder);
+      const splitResult = await this.splitPDFWithPDFTK(
+        filePath,
+        bwPages,
+        colorPages
+      );
 
-      // STEP 2: Process setiap group dalam urutan
-      console.log("🔄 STEP 2: Processing print groups in order...");
+      if (!splitResult.success) {
+        throw new Error(`PDF splitting failed: ${splitResult.error}`);
+      }
+
+      const { bwFile, colorFile } = splitResult;
+
+      // Hanya push file yang berhasil dibuat
+      if (bwFile) tempFiles.push(bwFile);
+      if (colorFile) tempFiles.push(colorFile);
+
+      console.log("✅ PDF Splitting completed:");
+      if (bwFile) console.log(`   - BW File: ${bwFile}`);
+      if (colorFile) console.log(`   - Color File: ${colorFile}`);
+
+      // STEP 2: Convert BW file ke grayscale dengan Ghostscript
+      let finalBWFile = bwFile;
+
+      if (bwPages.length > 0 && bwFile) {
+        console.log("🎨 STEP 2: Converting BW file to grayscale...");
+
+        const convertResult = await this.convertToGrayscale(bwFile);
+
+        if (!convertResult.success) {
+          throw new Error(
+            `Grayscale conversion failed: ${convertResult.error}`
+          );
+        }
+
+        finalBWFile = convertResult.outputPath;
+        tempFiles.push(finalBWFile);
+        console.log(`✅ Grayscale conversion completed: ${finalBWFile}`);
+      }
+
+      // STEP 3: Print files
+      console.log("🖨️ STEP 3: Printing files...");
 
       let printResults = [];
-      let groupFiles = [];
 
-      for (const group of printOrder) {
-        console.log(
-          `📄 Processing group: ${group.type} pages ${group.pages.join(",")}`
-        );
-
-        const groupResult = await this.processPrintGroup(
-          filePath,
-          group.pages,
-          group.type,
+      // Print BW file (grayscale)
+      if (bwPages.length > 0 && finalBWFile) {
+        console.log(`⚫ Printing BW pages: ${bwPages.join(",")}`);
+        const bwPrintResult = await this.directPrint(
+          finalBWFile,
           printerName,
           copies
         );
+        printResults.push({ type: "bw", ...bwPrintResult });
 
-        if (groupResult.tempFiles) {
-          groupFiles.push(...groupResult.tempFiles);
-        }
-        printResults.push(groupResult);
-
-        // Tunggu antara groups
-        if (group !== printOrder[printOrder.length - 1]) {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
 
-      // STEP 3: Cleanup temporary files
-      console.log("🧹 STEP 3: Cleaning up temporary files...");
-      await this.cleanupTempFiles(groupFiles);
+      // Print Color file
+      if (colorPages.length > 0 && colorFile) {
+        console.log(`🎨 Printing Color pages: ${colorPages.join(",")}`);
+        const colorPrintResult = await this.directPrint(
+          colorFile,
+          printerName,
+          copies
+        );
+        printResults.push({ type: "color", ...colorPrintResult });
+      }
 
+      // STEP 4: Cleanup temporary files
+      console.log("🧹 STEP 4: Cleaning up temporary files...");
+      await this.cleanupTempFiles(tempFiles);
       const allSuccess = printResults.every((result) => result.success);
 
       if (allSuccess) {
         return {
           success: true,
-          jobId: `ordered_${Date.now()}`,
-          method: "Ordered PDFTK + Ghostscript",
-          output: `Printed in order: ${printOrder
-            .map((g) => `${g.type}(${g.pages.join(",")})`)
-            .join(" → ")}`,
+
+          jobId: `structured_${Date.now()}`,
+          method: "Structured PDFTK + Ghostscript",
+          output: `Printed ${bwPages.length} BW pages and ${colorPages.length} color pages`,
           details: {
-            printOrder: printOrder,
+            splitFiles: { bw: bwFile, color: colorFile },
+            finalFiles: { bw: finalBWFile, color: colorFile },
             printResults: printResults,
           },
         };
@@ -170,139 +206,73 @@ class PrintService {
     }
   }
 
-  // METHOD: Buat urutan print dari halaman TERAKHIR ke PERTAMA
-  createPrintOrder(bwPages, colorPages) {
-    // Gabungkan semua halaman dan urutkan dari BESAR ke KECIL (reverse order)
-    const allPages = [...bwPages, ...colorPages].sort((a, b) => b - a); // b - a untuk descending
-
-    const printOrder = [];
-    let currentGroup = null;
-
-    for (const page of allPages) {
-      const pageType = bwPages.includes(page) ? "bw" : "color";
-
-      if (!currentGroup || currentGroup.type !== pageType) {
-        // Mulai group baru
-        if (currentGroup) {
-          printOrder.push(currentGroup);
-        }
-        currentGroup = {
-          type: pageType,
-          pages: [page],
-        };
-      } else {
-        // Tambahkan ke group yang sama (tetap urut descending)
-        currentGroup.pages.push(page);
-        // Urutkan pages dalam group juga descending
-        currentGroup.pages.sort((a, b) => b - a);
-      }
-    }
-
-    // Push group terakhir
-    if (currentGroup) {
-      printOrder.push(currentGroup);
-    }
-
-    console.log("🔄 Reverse Print Order:", printOrder);
-    return printOrder;
-  }
-
-  // PROCESS PRINT GROUP: Process satu group halaman (bw atau color)
-  async processPrintGroup(inputPath, pages, type, printerName, copies) {
-    try {
-      console.log(`🔄 Processing ${type} group: pages ${pages.join(",")}`);
-
-      // STEP 1: Extract pages dengan PDFTK
-      const extractResult = await this.extractPagesWithPDFTK(
-        inputPath,
-        pages,
-        type
-      );
-
-      if (!extractResult.success) {
-        throw new Error(`Extraction failed: ${extractResult.error}`);
-      }
-
-      const extractedFile = extractResult.outputPath;
-      console.log(`✅ Extracted ${type} pages: ${extractedFile}`);
-
-      // STEP 2: Convert ke grayscale jika BW
-      let finalFile = extractedFile;
-
-      if (type === "bw") {
-        console.log(`🎨 Converting to grayscale...`);
-        const convertResult = await this.convertToGrayscale(extractedFile);
-
-        if (!convertResult.success) {
-          throw new Error(
-            `Grayscale conversion failed: ${convertResult.error}`
-          );
-        }
-
-        finalFile = convertResult.outputPath;
-        console.log(`✅ Grayscale conversion completed: ${finalFile}`);
-      }
-
-      // STEP 3: Print file
-      console.log(`🖨️ Printing ${type} pages: ${pages.join(",")}`);
-      const printResult = await this.directPrint(
-        finalFile,
-        printerName,
-        copies
-      );
-
-      return {
-        success: printResult.success,
-        type: type,
-        pages: pages,
-        copies: copies,
-        tempFiles: type === "bw" ? [extractedFile, finalFile] : [extractedFile],
-        output: printResult.output,
-        error: printResult.error,
-      };
-    } catch (error) {
-      console.error(`❌ ${type} group processing failed:`, error);
-      return {
-        success: false,
-        type: type,
-        pages: pages,
-        error: error.message,
-      };
-    }
-  }
-
-  // EXTRACT PAGES: Extract halaman dengan PDFTK
-  async extractPagesWithPDFTK(inputPath, pages, type) {
+  // SPLIT PDF: Split PDF dengan PDFTK menjadi BW dan Color files
+  async splitPDFWithPDFTK(inputPath, bwPages, colorPages) {
     try {
       const baseName = path.basename(inputPath, ".pdf");
-      const outputPath = path.join(
-        this.tempDir,
-        `${baseName}-${type}-${pages.join("_")}.pdf`
+      const bwOutputPath = path.join(this.tempDir, `${baseName}-gray.pdf`);
+      const colorOutputPath = path.join(this.tempDir, `${baseName}-color.pdf`);
+
+      console.log(`📑 Splitting PDF: ${path.basename(inputPath)}`);
+      console.log(
+        `   - BW Pages: ${bwPages.length > 0 ? bwPages.join(",") : "none"}`
+      );
+      console.log(
+        `   - Color Pages: ${
+          colorPages.length > 0 ? colorPages.join(",") : "none"
+        }`
       );
 
-      const pagesStr = pages.join(" ");
-      const command = `"${this.pdftkPath}" "${inputPath}" cat ${pagesStr} output "${outputPath}"`;
+      let bwFileCreated = false;
+      let colorFileCreated = false;
 
-      console.log(`🔧 PDFTK ${type} Command:`, command);
-      await execPromise(command, { timeout: 30000 });
+      // Split BW pages
+      if (bwPages.length > 0) {
+        const bwPagesStr = bwPages.join(" ");
+        const bwCommand = `"${this.pdftkPath}" "${inputPath}" cat ${bwPagesStr} output "${bwOutputPath}"`;
 
-      if (await this.fileExists(outputPath)) {
-        const stats = await fs.stat(outputPath);
-        console.log(
-          `✅ ${type} extraction successful: ${outputPath} (${stats.size} bytes)`
-        );
+        console.log(`🔧 PDFTK BW Command:`, bwCommand);
+        await execPromise(bwCommand, { timeout: 30000 });
 
-        return {
-          success: true,
-          outputPath: outputPath,
-          fileSize: stats.size,
-          pages: pages.length,
-        };
-      } else {
-        throw new Error("Extraction failed - no output file created");
+        if (await this.fileExists(bwOutputPath)) {
+          const stats = await fs.stat(bwOutputPath);
+          console.log(
+            `✅ BW file created: ${bwOutputPath} (${stats.size} bytes)`
+          );
+          bwFileCreated = true;
+        } else {
+          console.warn("⚠️ BW file not created after PDFTK command");
+        }
       }
+
+      // Split Color pages
+      if (colorPages.length > 0) {
+        const colorPagesStr = colorPages.join(" ");
+        const colorCommand = `"${this.pdftkPath}" "${inputPath}" cat ${colorPagesStr} output "${colorOutputPath}"`;
+
+        console.log(`🔧 PDFTK Color Command:`, colorCommand);
+        await execPromise(colorCommand, { timeout: 30000 });
+
+        if (await this.fileExists(colorOutputPath)) {
+          const stats = await fs.stat(colorOutputPath);
+          console.log(
+            `✅ Color file created: ${colorOutputPath} (${stats.size} bytes)`
+          );
+          colorFileCreated = true;
+        } else {
+          console.warn("⚠️ Color file not created after PDFTK command");
+        }
+      }
+
+      return {
+        success: true,
+        bwFile: bwFileCreated ? bwOutputPath : null,
+        colorFile: colorFileCreated ? colorOutputPath : null,
+        bwPages: bwPages,
+        colorPages: colorPages,
+      };
     } catch (error) {
-      console.error("❌ PDFTK extraction failed:", error);
+      console.error("❌ PDFTK splitting failed:", error);
       return {
         success: false,
         error: error.message,
@@ -314,8 +284,10 @@ class PrintService {
   async convertToGrayscale(inputPath) {
     try {
       const baseName = path.basename(inputPath, ".pdf");
-      const outputPath = path.join(this.tempDir, `${baseName}-grayscale.pdf`);
 
+      const outputPath = path.join(this.tempDir, `${baseName}-converted.pdf`);
+
+      // Gunakan parameter yang proven bekerja untuk grayscale
       const gsCommand =
         `"${this.ghostscriptPath}" -dNOPAUSE -dBATCH -sDEVICE=pdfwrite ` +
         `-sColorConversionStrategy=Gray ` +
@@ -347,6 +319,8 @@ class PrintService {
           success: true,
           outputPath: outputPath,
           fileSize: stats.size,
+
+          command: gsCommand,
         };
       } else {
         throw new Error("Grayscale conversion failed - no output file created");

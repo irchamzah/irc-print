@@ -14,7 +14,7 @@ export default function PrintService() {
   const [paymentStatus, setPaymentStatus] = useState("pending");
 
   const calculateCost = () => {
-    const pageCost = settings.color === "color" ? 1000 : 500;
+    const pageCost = settings.color === "color" ? 1500 : 500;
     // Asumsi 10 halaman untuk perhitungan sederhana
     setCost(10 * pageCost * settings.copies);
   };
@@ -162,7 +162,7 @@ export default function PrintService() {
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md text-gray-700"
                   >
                     <option value="bw">Hitam Putih (Rp 500/halaman)</option>
-                    <option value="color">Warna (Rp 1000/halaman)</option>
+                    <option value="color">Warna (Rp 1500/halaman)</option>
                   </select>
                 </div>
 

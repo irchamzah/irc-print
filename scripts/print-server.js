@@ -1,20 +1,24 @@
-// Tambahkan di paling atas file
-require("dotenv").config({ path: ".env" }); // Path ke .env file
+// scripts/print-server.js
+require("dotenv").config();
 
-const { startBotServer } = require("../lib/bot/server");
-const { monitorSessions } = require("./monitor-sessions");
+console.log("🖨️ Starting Print Server (Polling Mode)...");
 
-console.log("🖨️ Starting Print Server...");
-console.log(
-  "Token from env:",
-  process.env.TELEGRAM_BOT_TOKEN ? "Exists" : "Missing"
-); // Debug
+// Import langsung dari bot, bukan dari server lama
+const { startBotServer } = require("../bot/index");
 
-startBotServer(process.env.TELEGRAM_BOT_TOKEN)
+const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+if (!botToken) {
+  console.error("❌ TELEGRAM_BOT_TOKEN not found");
+  process.exit(1);
+}
+
+startBotServer(botToken)
   .then(() => {
     console.log("✅ Bot server is running!");
 
-    // Also start session monitoring
+    // Start session monitoring jika diperlukan
+    const { monitorSessions } = require("./monitor-sessions");
     monitorSessions();
   })
   .catch((error) => {

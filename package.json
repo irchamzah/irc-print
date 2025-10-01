@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "bot": "node bot-runner.js",
+    "bot:dev": "nodemon bot-runner.js",
+    "bot:polling": "node bot-runner.js"
   },
   "dependencies": {
     "axios": "^1.12.2",
