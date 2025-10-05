@@ -75,6 +75,37 @@ export default function PrintService() {
     }
   };
 
+  // Fungsi untuk set semua halaman ke warna tertentu
+  const setAllPages = (type) => {
+    if (totalPages === 0) return;
+
+    const allPages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    if (type === "color") {
+      setAdvancedSettings({
+        ...advancedSettings,
+        colorPages: allPages,
+        bwPages: [],
+      });
+      calculateCost({
+        colorPages: allPages,
+        bwPages: [],
+        copies: advancedSettings.copies,
+      });
+    } else {
+      setAdvancedSettings({
+        ...advancedSettings,
+        colorPages: [],
+        bwPages: allPages,
+      });
+      calculateCost({
+        colorPages: [],
+        bwPages: allPages,
+        copies: advancedSettings.copies,
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -267,6 +298,57 @@ export default function PrintService() {
                 <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4">
                   Pengaturan Print Lanjutan
                 </h2>
+
+                {/* Tombol Set Semua Halaman */}
+                {/* <div className="mb-4 md:mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Set Semua Halaman:
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAllPages("bw")}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm transition-colors flex items-center"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                        />
+                      </svg>
+                      Semua Hitam Putih
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAllPages("color")}
+                      className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm transition-colors flex items-center"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                        />
+                      </svg>
+                      Semua Warna
+                    </button>
+                  </div>
+                </div> */}
 
                 <div className="mb-4 md:mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">

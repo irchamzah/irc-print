@@ -56,6 +56,31 @@ const PageSelector = ({
     });
   };
 
+  // Fungsi untuk set semua halaman ke warna tertentu
+  const setAllPages = (type) => {
+    const allPages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    const newSelections = selections.map((sel) => ({
+      ...sel,
+      type: type,
+    }));
+
+    setSelections(newSelections);
+
+    if (type === "color") {
+      onSettingsChange({
+        colorPages: allPages,
+        bwPages: [],
+        copies: initialSettings.copies || 1,
+      });
+    } else {
+      onSettingsChange({
+        colorPages: [],
+        bwPages: allPages,
+        copies: initialSettings.copies || 1,
+      });
+    }
+  };
+
   const handleRenderError = (pageNumber) => {
     setRenderErrors((prev) => ({ ...prev, [pageNumber]: true }));
   };
@@ -108,6 +133,54 @@ const PageSelector = ({
         Atur Jenis Print per Halaman:
       </h3>
 
+      {/* Tombol Set Semua Halaman di dalam PageSelector juga */}
+      <div className="mb-4">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setAllPages("bw")}
+            className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-xs transition-colors flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3 w-3 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              />
+            </svg>
+            Semua Hitam Putih
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllPages("color")}
+            className="px-3 py-1 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-xs transition-colors flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3 w-3 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+              />
+            </svg>
+            Semua Warna
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {pagesToShow.map(({ page, type }) => (
           <div
@@ -130,6 +203,7 @@ const PageSelector = ({
                     file={file}
                     pageNumber={page}
                     onRender={() => {}}
+                    onError={() => handleRenderError(page)}
                   />
                 )}
               </div>
