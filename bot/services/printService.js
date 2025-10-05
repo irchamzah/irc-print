@@ -13,7 +13,7 @@ class PrintService {
       "logs",
       "print-jobs.log"
     );
-    this.printerName = "EPSON L3150 Series";
+    this.printerName = process.env.PRINTER_NAME;
     this.ghostscriptPath =
       "C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe";
     this.pdftkPath = "C:\\Program Files (x86)\\PDFtk Server\\bin\\pdftk.exe";
@@ -334,7 +334,7 @@ class PrintService {
     }
   }
 
-  // DIRECT PRINT: Print PDF file
+  // DIRECT PRINT: Print PDF file dengan setting A4 full bleed
   async directPrint(filePath, printerName, copies) {
     try {
       console.log(
@@ -344,7 +344,24 @@ class PrintService {
       for (let copy = 1; copy <= copies; copy++) {
         console.log(`   Copy ${copy} of ${copies}`);
 
-        const gsCommand = `"${this.ghostscriptPath}" -dNOPAUSE -dBATCH -sDEVICE=mswinpr2 -sOutputFile="%printer%${printerName}" -f "${filePath}"`;
+        // Ghostscript command untuk A4 full bleed tanpa margin
+        const gsCommand =
+          `"${this.ghostscriptPath}" -dNOPAUSE -dBATCH ` +
+          `-sDEVICE=mswinpr2 ` +
+          `-sOutputFile="%printer%${printerName}" ` +
+          `-dPDFFitPage ` + // Fit page to paper size
+          `-dFIXEDMEDIA ` + // Use fixed paper size
+          `-dDEVICEWIDTHPOINTS=595 ` + // A4 width in points (210mm)
+          `-dDEVICEHEIGHTPOINTS=842 ` + // A4 height in points (297mm)
+          `-dORIENTATION=1 ` + // Portrait orientation
+          `-dPSFitPage ` + // Fit PostScript to page
+          `-dNORANGEPAGESIZE ` + // Don't range page size
+          `-dNOPAGEPROMPT ` + // No page prompt
+          `-dNOSAFER ` + // Allow file operations
+          `-c "<</BeginPage {0 0 moveto}>> setpagedevice" ` + // Remove margins
+          `-f "${filePath}"`;
+
+        console.log(`🔧 Print Command Copy ${copy}:`, gsCommand);
 
         const { stdout, stderr } = await execPromise(gsCommand, {
           timeout: 30000,
@@ -353,6 +370,10 @@ class PrintService {
         if (stdout) console.log("   Print stdout:", stdout);
         if (stderr) console.warn("   Print stderr:", stderr);
 
+        console.log(
+          `✅ Copy ${copy} sent to printer with A4 full bleed settings`
+        );
+
         if (copy < copies) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
@@ -360,7 +381,7 @@ class PrintService {
 
       return {
         success: true,
-        output: `Printed ${copies} copies successfully`,
+        output: `Printed ${copies} copies with A4 full bleed successfully`,
       };
     } catch (error) {
       console.error("❌ Print failed:", error);
