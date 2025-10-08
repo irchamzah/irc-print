@@ -294,28 +294,6 @@ export default function PrintService() {
             {/* Advanced Settings Section */}
             {file && totalPages > 0 && (
               <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
-                <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4">
-                  Pengaturan Print Lanjutan
-                </h2>
-
-                <div className="mb-4 md:mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Jumlah salinan:
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={advancedSettings.copies}
-                    onChange={(e) => {
-                      const copies = parseInt(e.target.value) || 1;
-                      const newSettings = { ...advancedSettings, copies };
-                      setAdvancedSettings(newSettings);
-                      calculateCost(newSettings);
-                    }}
-                    className="w-full md:w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-700"
-                  />
-                </div>
-
                 <PageSelector
                   totalPages={totalPages}
                   initialSettings={advancedSettings}
@@ -330,39 +308,12 @@ export default function PrintService() {
 
             {/* Payment Section */}
             {cost > 0 && (
-              <div className="bg-green-50 p-4 md:p-6 rounded-lg border border-green-200">
-                <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4 flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 md:h-6 md:w-6 mr-2 text-green-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                  </svg>
-                  Pembayaran
-                </h2>
-                <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm mb-3 md:mb-4">
-                  <p className="text-base md:text-lg font-semibold text-center text-gray-800">
-                    Total Biaya:{" "}
-                    <span className="text-blue-600">
-                      Rp {cost.toLocaleString("id-ID")}
-                    </span>
-                  </p>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                >
-                  Bayar dan Print
-                </button>
-              </div>
+              <button
+                type="submit"
+                className="w-full px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+              >
+                Bayar dan Print
+              </button>
             )}
           </form>
         </div>
