@@ -3,6 +3,7 @@ import { useState } from "react";
 import Head from "next/head";
 import dynamic from "next/dynamic";
 import { getPDFPageCount, validatePDFFile } from "../utils/pdfUtils";
+import PaymentModal from "@/components/PaymentModal";
 
 // Lazy load component untuk performance
 const PageSelector = dynamic(() => import("../components/PageSelector"), {
@@ -21,6 +22,10 @@ export default function PrintService() {
   const [cost, setCost] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
+
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
+  const [currentJobId, setCurrentJobId] = useState(null);
 
   const calculateCost = (settings = advancedSettings) => {
     const colorCost = settings.colorPages.length * 1500;
@@ -106,6 +111,7 @@ export default function PrintService() {
     }
   };
 
+  // GANTI handleSubmit function
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -117,25 +123,92 @@ export default function PrintService() {
     setIsLoading(true);
 
     try {
-      // 1. Prepare data untuk VPS
+      // 1. Generate order ID
+      const orderId = `print-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+
+      // 2. Prepare data untuk payment dan print
+      const requestData = {
+        orderId: orderId,
+        amount: cost,
+        fileInfo: {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        },
+        printSettings: {
+          copies: advancedSettings.copies,
+          colorPages: advancedSettings.colorPages,
+          bwPages: advancedSettings.bwPages,
+          printSettings: advancedSettings.printSettings || {},
+        },
+        totalCost: cost,
+      };
+
+      console.log("💰 Payment request:", requestData);
+
+      // 3. Create payment transaction di Midtrans
+      const paymentResponse = await fetch("/api/payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: cost,
+          orderId: orderId,
+        }),
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      if (!paymentResult.success) {
+        throw new Error(
+          paymentResult.error || "Gagal membuat transaksi payment"
+        );
+      }
+
+      console.log("✅ Payment transaction created:", paymentResult);
+
+      // 4. Simpan data untuk modal payment
+      setPaymentData({
+        qrCode: paymentResult.qr_code,
+        redirectUrl: paymentResult.redirect_url,
+        amount: cost,
+        orderId: orderId,
+      });
+
+      // 5. Tampilkan modal payment
+      setShowPaymentModal(true);
+      setCurrentJobId(orderId);
+    } catch (error) {
+      console.error("❌ Payment error:", error);
+      alert(`❌ Error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fungsi untuk handle payment success
+  const handlePaymentSuccess = async () => {
+    try {
+      setIsLoading(true);
+
+      // 1. Upload file ke VPS setelah payment success
       const formData = new FormData();
       formData.append("pdf", file);
       formData.append("copies", advancedSettings.copies);
-      formData.append("printerId", "printer-1"); // Default dulu
+      formData.append("printerId", "printer-1");
       formData.append(
         "colorPages",
         JSON.stringify(advancedSettings.colorPages)
       );
       formData.append("bwPages", JSON.stringify(advancedSettings.bwPages));
       formData.append("totalCost", cost);
+      formData.append("orderId", currentJobId);
 
-      console.log("📤 Sending to VPS...", {
-        file: file.name,
-        copies: advancedSettings.copies,
-        cost: cost,
-      });
+      console.log("📤 Sending file to VPS after payment...");
 
-      // 2. Kirim ke VPS via API route kita
       const response = await fetch("/api/print", {
         method: "POST",
         body: formData,
@@ -145,9 +218,11 @@ export default function PrintService() {
       console.log("📥 Response from VPS:", result);
 
       if (result.success) {
-        alert(`✅ ${result.message}\nJob ID: ${result.jobId}`);
+        alert(
+          `✅ Payment berhasil! File sedang diproses untuk print.\nJob ID: ${result.jobId}`
+        );
 
-        // Reset form setelah sukses
+        // Reset form
         setFile(null);
         setTotalPages(0);
         setCost(0);
@@ -156,17 +231,24 @@ export default function PrintService() {
           bwPages: [],
           copies: 1,
         });
-
-        // TODO: Redirect ke status page atau payment
+        setShowPaymentModal(false);
+        setPaymentData(null);
       } else {
-        alert(`❌ Print failed: ${result.error}`);
+        alert(`❌ Gagal mengirim file: ${result.error}`);
       }
     } catch (error) {
-      console.error("❌ Submit error:", error);
-      alert("❌ Network error: " + error.message);
+      console.error("❌ Error after payment:", error);
+      alert("❌ Error setelah payment: " + error.message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fungsi untuk handle payment cancelled
+  const handlePaymentCancelled = () => {
+    setShowPaymentModal(false);
+    setPaymentData(null);
+    alert("❌ Pembayaran dibatalkan. Silakan coba lagi.");
   };
 
   return (
@@ -318,6 +400,13 @@ export default function PrintService() {
           </form>
         </div>
       </main>
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={handlePaymentCancelled}
+        onSuccess={handlePaymentSuccess}
+        paymentData={paymentData}
+        isLoading={isLoading}
+      />
     </div>
   );
 }
