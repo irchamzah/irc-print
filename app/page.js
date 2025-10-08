@@ -114,60 +114,59 @@ export default function PrintService() {
       return;
     }
 
-    // Generate format untuk Telegram
-    const groupConsecutive = (pages) => {
-      if (pages.length === 0) return [];
-      pages.sort((a, b) => a - b);
-      const result = [];
-      let start = pages[0];
-      let end = pages[0];
+    setIsLoading(true);
 
-      for (let i = 1; i < pages.length; i++) {
-        if (pages[i] === end + 1) {
-          end = pages[i];
-        } else {
-          result.push(start === end ? `${start}` : `${start}-${end}`);
-          start = end = pages[i];
-        }
-      }
-      result.push(start === end ? `${start}` : `${start}-${end}`);
-      return result;
-    };
-
-    const colorStr = groupConsecutive(advancedSettings.colorPages).join(",");
-    const bwStr = groupConsecutive(advancedSettings.bwPages).join(",");
-
-    // **PERUBAHAN PENTING**: Generate /setprint command
-    const setprintCommand = `/setprint color:${colorStr} bw:${bwStr} copies:${advancedSettings.copies}`;
-
-    // **COPY TO CLIPBOARD**
     try {
-      await navigator.clipboard.writeText(setprintCommand);
-      console.log("✅ Text copied to clipboard:", setprintCommand);
-    } catch (err) {
-      console.error("❌ Failed to copy text: ", err);
-      // Fallback untuk browser yang tidak support clipboard API
-      const textArea = document.createElement("textarea");
-      textArea.value = setprintCommand;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
-      console.log("📋 Used fallback copy method");
+      // 1. Prepare data untuk VPS
+      const formData = new FormData();
+      formData.append("pdf", file);
+      formData.append("copies", advancedSettings.copies);
+      formData.append("printerId", "printer-1"); // Default dulu
+      formData.append(
+        "colorPages",
+        JSON.stringify(advancedSettings.colorPages)
+      );
+      formData.append("bwPages", JSON.stringify(advancedSettings.bwPages));
+      formData.append("totalCost", cost);
+
+      console.log("📤 Sending to VPS...", {
+        file: file.name,
+        copies: advancedSettings.copies,
+        cost: cost,
+      });
+
+      // 2. Kirim ke VPS via API route kita
+      const response = await fetch("/api/print", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      console.log("📥 Response from VPS:", result);
+
+      if (result.success) {
+        alert(`✅ ${result.message}\nJob ID: ${result.jobId}`);
+
+        // Reset form setelah sukses
+        setFile(null);
+        setTotalPages(0);
+        setCost(0);
+        setAdvancedSettings({
+          colorPages: [],
+          bwPages: [],
+          copies: 1,
+        });
+
+        // TODO: Redirect ke status page atau payment
+      } else {
+        alert(`❌ Print failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("❌ Submit error:", error);
+      alert("❌ Network error: " + error.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    // **DEEP LINK untuk Telegram**
-    const telegramMessage = `/file ${file.name}`;
-    const encodedMessage = encodeURIComponent(telegramMessage);
-    const deepLink = `https://t.me/ircstore_bot?text=${encodedMessage}`;
-
-    // Buka di tab baru
-    window.open(deepLink, "_blank");
-
-    alert(
-      `✅ Text telah disalin ke clipboard: ${setprintCommand}\n\n` +
-        "📱 Buka Telegram di tab yang terbuka, upload file, lalu paste text yang sudah disalin!"
-    );
   };
 
   return (
@@ -298,57 +297,6 @@ export default function PrintService() {
                 <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4">
                   Pengaturan Print Lanjutan
                 </h2>
-
-                {/* Tombol Set Semua Halaman */}
-                {/* <div className="mb-4 md:mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Set Semua Halaman:
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setAllPages("bw")}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm transition-colors flex items-center"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                        />
-                      </svg>
-                      Semua Hitam Putih
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAllPages("color")}
-                      className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm transition-colors flex items-center"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                        />
-                      </svg>
-                      Semua Warna
-                    </button>
-                  </div>
-                </div> */}
 
                 <div className="mb-4 md:mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
