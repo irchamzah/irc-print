@@ -8,7 +8,7 @@ export default function AboutPage() {
             Tentang IRC Print
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Layanan print online terpercaya untuk kebutuhan cetak dokumen Anda
+            Layanan print online 24 jam untuk kebutuhan cetak dokumen dadakan
           </p>
         </div>
 
@@ -23,8 +23,8 @@ export default function AboutPage() {
               Visi Kami
             </h3>
             <p className="text-gray-600">
-              Menjadi platform print online terdepan yang memudahkan masyarakat
-              dalam mencetak dokumen dengan cepat, hemat, dan berkualitas.
+              Menjadi platform print online 24 jam yang memudahkan masyarakat
+              dalam mencetak dokumen dadakan.
             </p>
           </div>
 
@@ -37,8 +37,7 @@ export default function AboutPage() {
               Misi Kami
             </h3>
             <p className="text-gray-600">
-              Menyediakan layanan print yang terjangkau, mudah diakses, dan
-              ramah lingkungan dengan teknologi terkini.
+              Menyediakan layanan print yang terjangkau, dan mudah diakses.
             </p>
           </div>
         </div>
@@ -48,17 +47,12 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
             Keunggulan Kami
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
               {
                 icon: "⚡",
                 title: "Cepat",
                 desc: "Proses print yang cepat dan efisien",
-              },
-              {
-                icon: "💰",
-                title: "Hemat",
-                desc: "Biaya terjangkau dengan kualitas terbaik",
               },
               {
                 icon: "🌍",
