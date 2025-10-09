@@ -193,17 +193,26 @@ export default function PrinterPage() {
     try {
       setIsLoading(true);
 
+      // Hitung total halaman yang akan diprint
+      const totalPagesToPrint =
+        (advancedSettings.colorPages.length + advancedSettings.bwPages.length) *
+        advancedSettings.copies;
+
+      console.log(`📄 Printing ${totalPagesToPrint} pages...`);
+
+      // 1. Upload file ke VPS setelah payment success
       const formData = new FormData();
       formData.append("pdf", file);
       formData.append("copies", advancedSettings.copies);
-      formData.append("printerId", "printer-1");
+      formData.append("printerId", printerId);
       formData.append(
         "colorPages",
         JSON.stringify(advancedSettings.colorPages)
       );
       formData.append("bwPages", JSON.stringify(advancedSettings.bwPages));
-      formData.append("totalCost", advancedSettings.cost); // GUNAKAN COST DARI PAGE SELECTOR
+      formData.append("totalCost", advancedSettings.cost);
       formData.append("orderId", currentJobId);
+      formData.append("totalPages", totalPagesToPrint);
 
       console.log("📤 Sending file to VPS after payment...");
 
@@ -217,7 +226,9 @@ export default function PrinterPage() {
 
       if (result.success) {
         alert(
-          `✅ Payment berhasil! File sedang diproses untuk print.\nJob ID: ${result.jobId}`
+          `✅ Payment berhasil! File sedang diproses untuk print.\n` +
+            `📄 ${totalPagesToPrint} halaman akan dicetak.\n` +
+            `Job ID: ${result.jobId}`
         );
 
         // Reset form
