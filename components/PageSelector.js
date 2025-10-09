@@ -6,11 +6,8 @@ import { PRINT_SETTINGS } from "../lib/printConstants";
 const PDFPreview = dynamic(() => import("./PDFPreview"), {
   ssr: false,
   loading: () => (
-    <div
-      className="bg-gray-100 rounded flex items-center justify-center"
-      style={{ width: 100, height: 140 }}
-    >
-      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+    <div className="bg-gray-100 rounded-lg flex items-center justify-center w-full h-32 sm:h-36">
+      <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-blue-600"></div>
     </div>
   ),
 });
@@ -25,13 +22,15 @@ const PageSelector = ({
   const [visiblePages, setVisiblePages] = useState(6);
   const [renderErrors, setRenderErrors] = useState({});
 
-  const [printSettings, setPrintSettings] = useState({
-    paperSize: "A4",
-    orientation: "PORTRAIT",
-    quality: "NORMAL",
-    margins: "NORMAL",
-    duplex: false,
-  });
+  const [printSettings, setPrintSettings] = useState(
+    initialSettings.printSettings || {
+      paperSize: "A4",
+      orientation: "PORTRAIT",
+      quality: "NORMAL",
+      margins: "NORMAL",
+      duplex: false,
+    }
+  );
 
   useEffect(() => {
     const initialSelections = Array.from({ length: totalPages }, (_, i) => ({
@@ -43,120 +42,23 @@ const PageSelector = ({
         : "bw",
     }));
     setSelections(initialSelections);
-  }, [totalPages, initialSettings]);
 
-  const handlePageTypeChange = (pageNumber, type) => {
-    const newSelections = selections.map((sel) =>
-      sel.page === pageNumber ? { ...sel, type } : sel
-    );
-    setSelections(newSelections);
-
-    const colorPages = newSelections
-      .filter((s) => s.type === "color")
-      .map((s) => s.page);
-    const bwPages = newSelections
-      .filter((s) => s.type === "bw")
-      .map((s) => s.page);
-
-    onSettingsChange({
-      colorPages,
-      bwPages,
-      copies: initialSettings.copies || 1,
-    });
-  };
-
-  // Fungsi untuk set semua halaman ke warna tertentu
-  const setAllPages = (type) => {
-    const allPages = Array.from({ length: totalPages }, (_, i) => i + 1);
-    const newSelections = selections.map((sel) => ({
-      ...sel,
-      type: type,
-    }));
-
-    setSelections(newSelections);
-
-    if (type === "color") {
-      onSettingsChange({
-        colorPages: allPages,
-        bwPages: [],
-        copies: initialSettings.copies || 1,
-      });
-    } else {
-      onSettingsChange({
-        colorPages: [],
-        bwPages: allPages,
-        copies: initialSettings.copies || 1,
-      });
+    // Hitung cost awal setelah selections dibuat
+    if (initialSelections.length > 0) {
+      const initialCost = calculateCostWithSettings(
+        initialSelections,
+        initialSettings.copies || 1,
+        printSettings
+      );
+      notifyParent(
+        initialSelections,
+        initialSettings.copies || 1,
+        printSettings,
+        initialCost
+      );
     }
-  };
+  }, [totalPages]);
 
-  const handleRenderError = (pageNumber) => {
-    setRenderErrors((prev) => ({ ...prev, [pageNumber]: true }));
-  };
-
-  const loadMorePages = () => {
-    setVisiblePages((prev) => prev + 6);
-  };
-
-  const groupConsecutive = (pages) => {
-    if (pages.length === 0) return [];
-    pages.sort((a, b) => a - b);
-    const result = [];
-    let start = pages[0];
-    let end = pages[0];
-
-    for (let i = 1; i < pages.length; i++) {
-      if (pages[i] === end + 1) {
-        end = pages[i];
-      } else {
-        result.push(start === end ? `${start}` : `${start}-${end}`);
-        start = end = pages[i];
-      }
-    }
-    result.push(start === end ? `${start}` : `${start}-${end}`);
-    return result;
-  };
-
-  const getTelegramFormat = () => {
-    const colorPages = selections
-      .filter((s) => s.type === "color")
-      .map((s) => s.page);
-    const bwPages = selections
-      .filter((s) => s.type === "bw")
-      .map((s) => s.page);
-
-    return `color:${groupConsecutive(colorPages).join(
-      ","
-    )} bw:${groupConsecutive(bwPages).join(",")} copies:${
-      initialSettings.copies || 1
-    }`;
-  };
-
-  // Fungsi untuk handle print settings change
-  const handlePrintSettingsChange = (newSettings) => {
-    const updatedSettings = { ...printSettings, ...newSettings };
-    setPrintSettings(updatedSettings);
-
-    // Calculate new cost
-    const newCost = calculateCostWithSettings(
-      selections,
-      initialSettings.copies || 1,
-      updatedSettings
-    );
-
-    // Kirim ke parent component
-    onSettingsChange({
-      colorPages: selections
-        .filter((s) => s.type === "color")
-        .map((s) => s.page),
-      bwPages: selections.filter((s) => s.type === "bw").map((s) => s.page),
-      copies: initialSettings.copies || 1,
-      printSettings: updatedSettings,
-      cost: newCost,
-    });
-  };
-
-  // Fungsi calculate cost dengan settings
   const calculateCostWithSettings = (selections, copies, settings) => {
     const colorPages = selections.filter((s) => s.type === "color").length;
     const bwPages = selections.filter((s) => s.type === "bw").length;
@@ -175,133 +77,288 @@ const PageSelector = ({
     return (totalColorCost + totalBwCost) * copies;
   };
 
+  const notifyParent = (selections, copies, settings, cost) => {
+    const colorPages = selections
+      .filter((s) => s.type === "color")
+      .map((s) => s.page);
+    const bwPages = selections
+      .filter((s) => s.type === "bw")
+      .map((s) => s.page);
+
+    onSettingsChange({
+      colorPages,
+      bwPages,
+      copies,
+      printSettings: settings,
+      cost: cost, // KIRIM COST KE PARENT
+    });
+  };
+
+  const handlePageTypeChange = (pageNumber, type) => {
+    const newSelections = selections.map((sel) =>
+      sel.page === pageNumber ? { ...sel, type } : sel
+    );
+    setSelections(newSelections);
+
+    const cost = calculateCostWithSettings(
+      newSelections,
+      initialSettings.copies || 1,
+      printSettings
+    );
+    notifyParent(
+      newSelections,
+      initialSettings.copies || 1,
+      printSettings,
+      cost
+    );
+  };
+
+  const setAllPages = (type) => {
+    const allPages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    const newSelections = selections.map((sel) => ({
+      ...sel,
+      type: type,
+    }));
+
+    setSelections(newSelections);
+
+    const cost = calculateCostWithSettings(
+      newSelections,
+      initialSettings.copies || 1,
+      printSettings
+    );
+
+    if (type === "color") {
+      notifyParent(
+        newSelections,
+        initialSettings.copies || 1,
+        printSettings,
+        cost
+      );
+    } else {
+      notifyParent(
+        newSelections,
+        initialSettings.copies || 1,
+        printSettings,
+        cost
+      );
+    }
+  };
+
+  const handleRenderError = (pageNumber) => {
+    setRenderErrors((prev) => ({ ...prev, [pageNumber]: true }));
+  };
+
+  const loadMorePages = () => {
+    setVisiblePages((prev) => Math.min(prev + 20, totalPages));
+  };
+
+  const handlePrintSettingsChange = (newSettings) => {
+    const updatedSettings = { ...printSettings, ...newSettings };
+    setPrintSettings(updatedSettings);
+
+    const cost = calculateCostWithSettings(
+      selections,
+      initialSettings.copies || 1,
+      updatedSettings
+    );
+    notifyParent(
+      selections,
+      initialSettings.copies || 1,
+      updatedSettings,
+      cost
+    );
+  };
+
+  const handleCopiesChange = (copies) => {
+    const validatedCopies = Math.max(1, Math.min(50, copies || 1));
+
+    const cost = calculateCostWithSettings(
+      selections,
+      validatedCopies,
+      printSettings
+    );
+    notifyParent(selections, validatedCopies, printSettings, cost);
+  };
+
   if (totalPages === 0) return null;
 
   const pagesToShow = selections.slice(0, visiblePages);
+  const hasMorePages = visiblePages < totalPages;
+  const currentCost = calculateCostWithSettings(
+    selections,
+    initialSettings.copies || 1,
+    printSettings
+  );
 
   return (
-    <>
-      <div className="mt-6">
-        <h3 className="text-lg font-medium text-gray-800 mb-4">
-          Atur Jenis Print per Halaman:
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="text-center sm:text-left">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
+          Atur Jenis Print per Halaman
         </h3>
-
-        {/* Tombol Set Semua Halaman di dalam PageSelector juga */}
-        <div className="mb-4">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setAllPages("bw")}
-              className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-xs transition-colors flex items-center"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-              Set Hitam-Putih Semua
-            </button>
-            <button
-              type="button"
-              onClick={() => setAllPages("color")}
-              className="px-3 py-1 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-xs transition-colors flex items-center"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                />
-              </svg>
-              Set Warna Semua
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {pagesToShow.map(({ page, type }) => (
-            <div
-              key={page}
-              className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
-            >
-              <div className="text-center mb-3">
-                <div className="text-sm font-medium text-gray-700 mb-2">
-                  Halaman {page}
-                </div>
-
-                {/* PDF Preview dengan error handling */}
-                <div
-                  className="mx-auto mb-3"
-                  style={{ width: 100, height: 140 }}
-                >
-                  {renderErrors[page] ? (
-                    <div className="w-full h-full bg-red-50 flex items-center justify-center rounded border border-red-200">
-                      <span className="text-red-600 text-xs">Gagal memuat</span>
-                    </div>
-                  ) : (
-                    <PDFPreview
-                      file={file}
-                      pageNumber={page}
-                      onRender={() => {}}
-                      onError={() => handleRenderError(page)}
-                    />
-                  )}
-                </div>
-
-                <select
-                  value={type}
-                  onChange={(e) => handlePageTypeChange(page, e.target.value)}
-                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-700"
-                >
-                  <option value="bw">Hitam Putih</option>
-                  <option value="color">Warna</option>
-                </select>
-              </div>
-
-              <div
-                className={`text-xs text-center ${
-                  type === "color" ? "text-blue-600" : "text-gray-600"
-                }`}
-              >
-                {type === "color" ? "🟡 Warna" : "⚫ Hitam-Putih"}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {visiblePages < totalPages && (
-          <div className="text-center mb-6">
-            <button
-              onClick={loadMorePages}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm"
-            >
-              Muat Lebih Banyak ({totalPages - visiblePages} halaman tersisa)
-            </button>
-          </div>
-        )}
+        <p className="text-gray-600 text-sm">
+          Pilih tiap halaman akan dicetak warna atau hitam-putih
+        </p>
       </div>
 
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h3 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
+      {/* Bulk Actions */}
+      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center sm:justify-start">
+          <button
+            type="button"
+            onClick={() => setAllPages("bw")}
+            className="flex items-center justify-center px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-200 text-sm font-medium shadow-sm"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              />
+            </svg>
+            Set Semua Hitam-Putih
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllPages("color")}
+            className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all duration-200 text-sm font-medium shadow-sm"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+              />
+            </svg>
+            Set Semua Warna
+          </button>
+        </div>
+      </div>
+
+      {/* Pages Grid */}
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+        {pagesToShow.map(({ page, type }) => (
+          <div
+            key={page}
+            className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 p-4"
+          >
+            {/* Page Header */}
+            <div className="text-center mb-3">
+              <div className="inline-flex items-center px-3 py-1 bg-gray-100 rounded-full">
+                <span className="text-sm font-medium text-gray-700">
+                  Halaman {page}
+                </span>
+              </div>
+            </div>
+
+            {/* PDF Preview */}
+            <div className="mb-3">
+              {renderErrors[page] ? (
+                <div className="w-full h-32 sm:h-36 bg-red-50 flex items-center justify-center rounded-lg border-2 border-dashed border-red-200">
+                  <div className="text-center">
+                    <svg
+                      className="h-8 w-8 text-red-400 mx-auto mb-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
+                    </svg>
+                    <span className="text-red-600 text-xs block">
+                      Gagal memuat
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <PDFPreview
+                  file={file}
+                  pageNumber={page}
+                  onRender={() => {}}
+                  onError={() => handleRenderError(page)}
+                />
+              )}
+            </div>
+
+            {/* Type Selector */}
+            <div className="space-y-2">
+              <select
+                value={type}
+                onChange={(e) => handlePageTypeChange(page, e.target.value)}
+                className="w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors text-gray-700"
+              >
+                <option value="bw">⚫ Hitam Putih</option>
+                <option value="color">🟡 Warna</option>
+              </select>
+
+              <div
+                className={`text-center px-2 py-1 rounded-lg text-xs font-medium ${
+                  type === "color"
+                    ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                    : "bg-gray-100 text-gray-800 border border-gray-200"
+                }`}
+              >
+                {type === "color" ? "Warna" : "Hitam-Putih"}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Load More Button */}
+      {hasMorePages && (
+        <div className="text-center pt-4">
+          <button
+            onClick={loadMorePages}
+            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Muat {Math.min(20, totalPages - visiblePages)} Halaman Lagi
+            <span className="ml-2 text-blue-200">
+              ({totalPages - visiblePages} tersisa)
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Advanced Settings */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 flex items-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 mr-2 text-blue-600"
+            className="h-5 w-5 sm:h-6 sm:w-6 mr-3 text-blue-600"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -319,13 +376,13 @@ const PageSelector = ({
               d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
             />
           </svg>
-          Pengaturan Print Lanjutan
+          Pengaturan Lanjutan
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Paper Size */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
               📄 Ukuran Kertas
             </label>
             <select
@@ -333,7 +390,7 @@ const PageSelector = ({
               onChange={(e) =>
                 handlePrintSettingsChange({ paperSize: e.target.value })
               }
-              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+              className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-700"
             >
               {Object.entries(PRINT_SETTINGS.PAPER_SIZES).map(
                 ([key, paper]) => (
@@ -345,121 +402,47 @@ const PageSelector = ({
             </select>
           </div>
 
-          {/* Orientation */}
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              📐 Orientasi
-            </label>
-            <select
-              value={printSettings.orientation}
-              onChange={(e) =>
-                handlePrintSettingsChange({ orientation: e.target.value })
-              }
-              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700"
-            >
-              <option value="PORTRAIT">Portrait</option>
-              <option value="LANDSCAPE">Landscape</option>
-            </select>
-          </div> */}
-
-          {/* Quality */}
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              🎯 Kualitas
-            </label>
-            <select
-              value={printSettings.quality}
-              onChange={(e) =>
-                handlePrintSettingsChange({ quality: e.target.value })
-              }
-              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700"
-            >
-              {Object.entries(PRINT_SETTINGS.QUALITY).map(([key, quality]) => (
-                <option key={key} value={key}>
-                  {quality.description}
-                </option>
-              ))}
-            </select>
-          </div> */}
-
-          {/* Margins */}
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              📏 Margin
-            </label>
-            <select
-              value={printSettings.margins}
-              onChange={(e) =>
-                handlePrintSettingsChange({ margins: e.target.value })
-              }
-              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700"
-            >
-              {Object.entries(PRINT_SETTINGS.MARGINS).map(([key, margin]) => (
-                <option key={key} value={key}>
-                  {margin.description}
-                </option>
-              ))}
-            </select>
-          </div> */}
-
           {/* Copies */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
               📑 Jumlah Salinan
             </label>
             <input
               type="number"
               min="1"
-              max="10"
+              max="50"
               value={initialSettings.copies || 1}
               onChange={(e) => {
-                const copies = parseInt(e.target.value) || 1;
-                onSettingsChange({
-                  ...initialSettings,
-                  copies: copies,
-                  printSettings: printSettings,
-                });
+                handleCopiesChange(parseInt(e.target.value) || 1);
               }}
-              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+              className="w-full p-3 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-center text-gray-700"
             />
           </div>
-
-          {/* Duplex Option */}
-          {/* <div className="flex items-center justify-center">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={printSettings.duplex}
-                onChange={(e) =>
-                  handlePrintSettingsChange({ duplex: e.target.checked })
-                }
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 text-gray-700"
-              />
-              <span className="text-sm text-gray-700">
-                🔄 Print Bolak-Balik
-              </span>
-            </label>
-          </div> */}
         </div>
 
-        {/* Cost Preview */}
-        <div className="mt-3 p-3 bg-white rounded border">
-          <div className="text-sm font-medium text-gray-700">
-            💰 Perkiraan Biaya: Rp{" "}
-            {calculateCostWithSettings(
-              selections,
-              initialSettings.copies || 1,
-              printSettings
-            ).toLocaleString("id-ID")}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {selections.filter((s) => s.type === "color").length} halaman warna
-            + {selections.filter((s) => s.type === "bw").length} halaman BW ×{" "}
-            {initialSettings.copies || 1} salinan
+        {/* Cost Summary */}
+        <div className="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="text-lg font-bold text-gray-800">
+                Rp {currentCost.toLocaleString("id-ID")}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                {selections.filter((s) => s.type === "color").length} halaman
+                warna • {selections.filter((s) => s.type === "bw").length}{" "}
+                halaman BW • {initialSettings.copies || 1} salinan
+              </div>
+            </div>
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+              <span className="text-sm text-green-600 font-medium">
+                Live Update
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

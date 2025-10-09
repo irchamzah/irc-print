@@ -7,7 +7,11 @@ import PaymentModal from "@/components/PaymentModal";
 
 const PageSelector = dynamic(() => import("../../components/PageSelector"), {
   ssr: false,
-  loading: () => <div>Loading...</div>,
+  loading: () => (
+    <div className="flex justify-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  ),
 });
 
 export default function PrinterPage() {
@@ -20,11 +24,17 @@ export default function PrinterPage() {
     colorPages: [],
     bwPages: [],
     copies: 1,
+    printSettings: {
+      paperSize: "A4",
+      orientation: "PORTRAIT",
+      quality: "NORMAL",
+      margins: "NORMAL",
+      duplex: false,
+    },
+    cost: 0, // TAMBAHKAN COST DI ADVANCED SETTINGS
   });
   const [totalPages, setTotalPages] = useState(0);
-  const [cost, setCost] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [currentJobId, setCurrentJobId] = useState(null);
@@ -46,16 +56,7 @@ export default function PrinterPage() {
     }
   };
 
-  const calculateCost = (settings = advancedSettings) => {
-    const colorCost = settings.colorPages.length * 1500;
-    const bwCost = settings.bwPages.length * 500;
-    const totalCost = (colorCost + bwCost) * settings.copies;
-    setCost(totalCost);
-    return totalCost;
-  };
-
   const handleFileUpload = async (selectedFile) => {
-    // Validasi file
     const validation = validatePDFFile(selectedFile);
     if (!validation.isValid) {
       alert(validation.error);
@@ -64,30 +65,31 @@ export default function PrinterPage() {
 
     setIsLoading(true);
     try {
-      // Get page count from PDF
       const pageCount = await getPDFPageCount(selectedFile);
       setTotalPages(pageCount);
       setFile(selectedFile);
 
-      // Set default settings: halaman 1 warna, lainnya BW
       const defaultColorPages = [1];
       const defaultBwPages = Array.from(
         { length: pageCount - 1 },
         (_, i) => i + 2
       );
 
-      setAdvancedSettings({
+      const initialSettings = {
         colorPages: defaultColorPages,
         bwPages: defaultBwPages,
         copies: 1,
-      });
+        printSettings: {
+          paperSize: "A4",
+          orientation: "PORTRAIT",
+          quality: "NORMAL",
+          margins: "NORMAL",
+          duplex: false,
+        },
+        cost: 0, // Akan diupdate oleh PageSelector
+      };
 
-      // Calculate initial cost
-      calculateCost({
-        colorPages: defaultColorPages,
-        bwPages: defaultBwPages,
-        copies: 1,
-      });
+      setAdvancedSettings(initialSettings);
 
       return true;
     } catch (error) {
@@ -99,38 +101,12 @@ export default function PrinterPage() {
     }
   };
 
-  // Fungsi untuk set semua halaman ke warna tertentu
-  const setAllPages = (type) => {
-    if (totalPages === 0) return;
-
-    const allPages = Array.from({ length: totalPages }, (_, i) => i + 1);
-
-    if (type === "color") {
-      setAdvancedSettings({
-        ...advancedSettings,
-        colorPages: allPages,
-        bwPages: [],
-      });
-      calculateCost({
-        colorPages: allPages,
-        bwPages: [],
-        copies: advancedSettings.copies,
-      });
-    } else {
-      setAdvancedSettings({
-        ...advancedSettings,
-        colorPages: [],
-        bwPages: allPages,
-      });
-      calculateCost({
-        colorPages: [],
-        bwPages: allPages,
-        copies: advancedSettings.copies,
-      });
-    }
+  // Update handler untuk menerima settings dari PageSelector
+  const handleSettingsChange = (newSettings) => {
+    console.log("🔄 Settings updated from PageSelector:", newSettings);
+    setAdvancedSettings(newSettings);
   };
 
-  // GANTI handleSubmit function
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -139,18 +115,26 @@ export default function PrinterPage() {
       return;
     }
 
+    // Gunakan cost dari advancedSettings (dari PageSelector)
+    const finalCost = advancedSettings.cost || 0;
+
+    if (finalCost <= 0) {
+      alert(
+        "Biaya print belum dihitung. Silakan tunggu sebentar atau periksa pengaturan."
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // 1. Generate order ID
       const orderId = `print-${Date.now()}-${Math.random()
         .toString(36)
         .substr(2, 9)}`;
 
-      // 2. Prepare data untuk payment dan print
       const requestData = {
         orderId: orderId,
-        amount: cost,
+        amount: finalCost, // GUNAKAN COST DARI PAGE SELECTOR
         fileInfo: {
           name: file.name,
           size: file.size,
@@ -162,19 +146,18 @@ export default function PrinterPage() {
           bwPages: advancedSettings.bwPages,
           printSettings: advancedSettings.printSettings || {},
         },
-        totalCost: cost,
+        totalCost: finalCost,
       };
 
       console.log("💰 Payment request:", requestData);
 
-      // 3. Create payment transaction di Midtrans
       const paymentResponse = await fetch("/api/payment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: cost,
+          amount: finalCost, // GUNAKAN COST DARI PAGE SELECTOR
           orderId: orderId,
         }),
       });
@@ -189,15 +172,13 @@ export default function PrinterPage() {
 
       console.log("✅ Payment transaction created:", paymentResult);
 
-      // 4. Simpan data untuk modal payment
       setPaymentData({
         qrCode: paymentResult.qr_code,
         redirectUrl: paymentResult.redirect_url,
-        amount: cost,
+        amount: finalCost, // GUNAKAN COST DARI PAGE SELECTOR
         orderId: orderId,
       });
 
-      // 5. Tampilkan modal payment
       setShowPaymentModal(true);
       setCurrentJobId(orderId);
     } catch (error) {
@@ -208,12 +189,10 @@ export default function PrinterPage() {
     }
   };
 
-  // Fungsi untuk handle payment success
   const handlePaymentSuccess = async () => {
     try {
       setIsLoading(true);
 
-      // 1. Upload file ke VPS setelah payment success
       const formData = new FormData();
       formData.append("pdf", file);
       formData.append("copies", advancedSettings.copies);
@@ -223,7 +202,7 @@ export default function PrinterPage() {
         JSON.stringify(advancedSettings.colorPages)
       );
       formData.append("bwPages", JSON.stringify(advancedSettings.bwPages));
-      formData.append("totalCost", cost);
+      formData.append("totalCost", advancedSettings.cost); // GUNAKAN COST DARI PAGE SELECTOR
       formData.append("orderId", currentJobId);
 
       console.log("📤 Sending file to VPS after payment...");
@@ -244,11 +223,18 @@ export default function PrinterPage() {
         // Reset form
         setFile(null);
         setTotalPages(0);
-        setCost(0);
         setAdvancedSettings({
           colorPages: [],
           bwPages: [],
           copies: 1,
+          printSettings: {
+            paperSize: "A4",
+            orientation: "PORTRAIT",
+            quality: "NORMAL",
+            margins: "NORMAL",
+            duplex: false,
+          },
+          cost: 0,
         });
         setShowPaymentModal(false);
         setPaymentData(null);
@@ -263,7 +249,6 @@ export default function PrinterPage() {
     }
   };
 
-  // Fungsi untuk handle payment cancelled
   const handlePaymentCancelled = () => {
     setShowPaymentModal(false);
     setPaymentData(null);
@@ -272,10 +257,10 @@ export default function PrinterPage() {
 
   if (!printer) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat printer...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat printer...</p>
         </div>
       </div>
     );
@@ -283,19 +268,21 @@ export default function PrinterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Printer Header */}
+      {/* Printer Header - Responsive */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
                 {printer.name}
               </h1>
-              <p className="text-gray-600">{printer.location.address}</p>
+              <p className="text-gray-600 text-sm sm:text-base mt-1 truncate">
+                {printer.location?.address}
+              </p>
             </div>
-            <div className="text-right">
+            <div className="flex flex-col sm:items-end gap-2">
               <div
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
                   printer.status === "online"
                     ? "bg-green-100 text-green-800"
                     : printer.status === "offline"
@@ -309,109 +296,26 @@ export default function PrinterPage() {
                   ? "🔴 Offline"
                   : "🟡 Maintenance"}
               </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {printer.paperStatus.paperCount} kertas tersedia
+              <p className="text-gray-600 text-xs sm:text-sm">
+                {printer.paperStatus?.paperCount || 0} kertas tersedia
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
-        <div className="bg-white rounded-xl shadow-lg p-4 md:p-8 mb-6 md:mb-8">
-          <div className="text-center mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-2">
-              Irc Print
-            </h1>
-            <p className="text-sm md:text-base text-gray-600">
-              Layanan Print Online
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-            {/* File Upload Section */}
-            <div className="bg-blue-50 p-4 md:p-6 rounded-lg border border-blue-200">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4 flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 md:h-6 md:w-6 mr-2 text-blue-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                Upload File
-              </h2>
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-4 pb-5 md:pt-5 md:pb-6">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-8 w-8 md:h-10 md:w-10 text-blue-500 mb-1 md:mb-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                    <p className="text-xs md:text-sm text-gray-600 text-center">
-                      <span className="font-semibold">Klik untuk upload</span>{" "}
-                      atau drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1 text-center">
-                      PDF saja (Maks. 10MB)
-                    </p>
-                  </div>
-                  {isLoading && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                      <div className="bg-white p-4 md:p-6 rounded-lg shadow-lg mx-4">
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-600 mr-3"></div>
-                          <span className="text-sm md:text-base">
-                            Memproses file PDF...
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf"
-                    onChange={async (e) => {
-                      const selectedFile = e.target.files[0];
-                      if (selectedFile) {
-                        if (selectedFile.type === "application/pdf") {
-                          const success = await handleFileUpload(selectedFile);
-                          if (!success) {
-                            e.target.value = "";
-                          }
-                        } else {
-                          alert("Hanya file PDF yang diperbolehkan!");
-                          e.target.value = "";
-                        }
-                      }
-                    }}
-                    required
-                  />
-                </label>
-              </div>
-              {file && (
-                <p className="text-xs md:text-sm text-green-600 mt-2 flex items-center justify-center md:justify-start">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {/* Form Content */}
+          <div className="p-4 sm:p-6 lg:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+              {/* File Upload Section */}
+              <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
+                    className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-blue-600 flex-shrink-0"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -420,41 +324,158 @@ export default function PrinterPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M5 13l4 4L19 7"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                     />
                   </svg>
-                  File terpilih: {file.name}
-                </p>
-              )}
-            </div>
+                  Upload File
+                </h2>
 
-            {/* Advanced Settings Section */}
-            {file && totalPages > 0 && (
-              <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
-                <PageSelector
-                  totalPages={totalPages}
-                  initialSettings={advancedSettings}
-                  onSettingsChange={(newSettings) => {
-                    setAdvancedSettings(newSettings);
-                    calculateCost(newSettings);
-                  }}
-                  file={file}
-                />
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-32 sm:h-40 border-2 border-dashed border-blue-300 rounded-xl cursor-pointer bg-white hover:bg-blue-50 transition-all duration-200">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-10 w-10 sm:h-12 sm:w-12 text-blue-500 mb-2 sm:mb-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
+                      </svg>
+                      <p className="text-sm sm:text-base text-gray-600 mb-1">
+                        <span className="font-semibold">Klik untuk upload</span>
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-500">
+                        PDF saja (Maks. 10MB)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf"
+                      onChange={async (e) => {
+                        const selectedFile = e.target.files[0];
+                        if (selectedFile) {
+                          if (selectedFile.type === "application/pdf") {
+                            const success = await handleFileUpload(
+                              selectedFile
+                            );
+                            if (!success) {
+                              e.target.value = "";
+                            }
+                          } else {
+                            alert("Hanya file PDF yang diperbolehkan!");
+                            e.target.value = "";
+                          }
+                        }
+                      }}
+                      required
+                    />
+                  </label>
+                </div>
+
+                {file && (
+                  <div className="mt-3 flex items-center justify-center sm:justify-start">
+                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 text-green-600 mr-2 flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span className="text-green-700 text-sm truncate max-w-[200px] sm:max-w-none">
+                        {file.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
 
-            {/* Payment Section */}
-            {cost > 0 && (
-              <button
-                type="submit"
-                className="w-full px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-              >
-                Bayar dan Print
-              </button>
-            )}
-          </form>
+              {/* Advanced Settings Section */}
+              {file && totalPages > 0 && (
+                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 sm:p-6">
+                  <PageSelector
+                    totalPages={totalPages}
+                    initialSettings={advancedSettings}
+                    onSettingsChange={handleSettingsChange} // GUNAKAN HANDLER BARU
+                    file={file}
+                  />
+                </div>
+              )}
+
+              {/* Cost Summary */}
+              {advancedSettings.cost > 0 && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                        Total Biaya
+                      </h3>
+                      <p className="text-gray-600 text-sm">
+                        {totalPages} halaman × {advancedSettings.copies} rangkap
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl sm:text-3xl font-bold text-green-600">
+                        Rp {advancedSettings.cost.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Button */}
+              {advancedSettings.cost > 0 && (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed text-lg"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      Memproses...
+                    </div>
+                  ) : (
+                    "💳 Bayar dan Print"
+                  )}
+                </button>
+              )}
+            </form>
+          </div>
         </div>
       </main>
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-sm w-full">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mr-4"></div>
+              <div>
+                <p className="font-semibold text-gray-800">Memproses...</p>
+                <p className="text-gray-600 text-sm mt-1">
+                  Harap tunggu sebentar
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PaymentModal
         isOpen={showPaymentModal}
         onClose={handlePaymentCancelled}
