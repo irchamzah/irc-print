@@ -1,412 +1,287 @@
 "use client";
-import { useState } from "react";
-import Head from "next/head";
-import dynamic from "next/dynamic";
-import { getPDFPageCount, validatePDFFile } from "../utils/pdfUtils";
-import PaymentModal from "@/components/PaymentModal";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-// Lazy load component untuk performance
-const PageSelector = dynamic(() => import("../components/PageSelector"), {
-  ssr: false,
-  loading: () => <div>Loading...</div>,
-});
+export default function HomePage() {
+  const [printers, setPrinters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+  const router = useRouter();
 
-export default function PrintService() {
-  const [file, setFile] = useState(null);
-  const [advancedSettings, setAdvancedSettings] = useState({
-    colorPages: [],
-    bwPages: [],
-    copies: 1,
-  });
-  const [totalPages, setTotalPages] = useState(0);
-  const [cost, setCost] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [copyStatus, setCopyStatus] = useState("");
+  useEffect(() => {
+    fetchPrinters();
+    getUserLocation();
+  }, []);
 
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentData, setPaymentData] = useState(null);
-  const [currentJobId, setCurrentJobId] = useState(null);
-
-  const calculateCost = (settings = advancedSettings) => {
-    const colorCost = settings.colorPages.length * 1500;
-    const bwCost = settings.bwPages.length * 500;
-    const totalCost = (colorCost + bwCost) * settings.copies;
-    setCost(totalCost);
-    return totalCost;
-  };
-
-  const handleFileUpload = async (selectedFile) => {
-    // Validasi file
-    const validation = validatePDFFile(selectedFile);
-    if (!validation.isValid) {
-      alert(validation.error);
-      return false;
-    }
-
-    setIsLoading(true);
+  const fetchPrinters = async () => {
     try {
-      // Get page count from PDF
-      const pageCount = await getPDFPageCount(selectedFile);
-      setTotalPages(pageCount);
-      setFile(selectedFile);
-
-      // Set default settings: halaman 1 warna, lainnya BW
-      const defaultColorPages = [1];
-      const defaultBwPages = Array.from(
-        { length: pageCount - 1 },
-        (_, i) => i + 2
-      );
-
-      setAdvancedSettings({
-        colorPages: defaultColorPages,
-        bwPages: defaultBwPages,
-        copies: 1,
-      });
-
-      // Calculate initial cost
-      calculateCost({
-        colorPages: defaultColorPages,
-        bwPages: defaultBwPages,
-        copies: 1,
-      });
-
-      return true;
-    } catch (error) {
-      console.error("Error reading PDF:", error);
-      alert("Gagal membaca file PDF. Silakan coba file lain.");
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fungsi untuk set semua halaman ke warna tertentu
-  const setAllPages = (type) => {
-    if (totalPages === 0) return;
-
-    const allPages = Array.from({ length: totalPages }, (_, i) => i + 1);
-
-    if (type === "color") {
-      setAdvancedSettings({
-        ...advancedSettings,
-        colorPages: allPages,
-        bwPages: [],
-      });
-      calculateCost({
-        colorPages: allPages,
-        bwPages: [],
-        copies: advancedSettings.copies,
-      });
-    } else {
-      setAdvancedSettings({
-        ...advancedSettings,
-        colorPages: [],
-        bwPages: allPages,
-      });
-      calculateCost({
-        colorPages: [],
-        bwPages: allPages,
-        copies: advancedSettings.copies,
-      });
-    }
-  };
-
-  // GANTI handleSubmit function
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!file) {
-      alert("Silakan upload file terlebih dahulu!");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // 1. Generate order ID
-      const orderId = `print-${Date.now()}-${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-
-      // 2. Prepare data untuk payment dan print
-      const requestData = {
-        orderId: orderId,
-        amount: cost,
-        fileInfo: {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        },
-        printSettings: {
-          copies: advancedSettings.copies,
-          colorPages: advancedSettings.colorPages,
-          bwPages: advancedSettings.bwPages,
-          printSettings: advancedSettings.printSettings || {},
-        },
-        totalCost: cost,
-      };
-
-      console.log("💰 Payment request:", requestData);
-
-      // 3. Create payment transaction di Midtrans
-      const paymentResponse = await fetch("/api/payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: cost,
-          orderId: orderId,
-        }),
-      });
-
-      const paymentResult = await paymentResponse.json();
-
-      if (!paymentResult.success) {
-        throw new Error(
-          paymentResult.error || "Gagal membuat transaksi payment"
-        );
-      }
-
-      console.log("✅ Payment transaction created:", paymentResult);
-
-      // 4. Simpan data untuk modal payment
-      setPaymentData({
-        qrCode: paymentResult.qr_code,
-        redirectUrl: paymentResult.redirect_url,
-        amount: cost,
-        orderId: orderId,
-      });
-
-      // 5. Tampilkan modal payment
-      setShowPaymentModal(true);
-      setCurrentJobId(orderId);
-    } catch (error) {
-      console.error("❌ Payment error:", error);
-      alert(`❌ Error: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fungsi untuk handle payment success
-  const handlePaymentSuccess = async () => {
-    try {
-      setIsLoading(true);
-
-      // 1. Upload file ke VPS setelah payment success
-      const formData = new FormData();
-      formData.append("pdf", file);
-      formData.append("copies", advancedSettings.copies);
-      formData.append("printerId", "printer-1");
-      formData.append(
-        "colorPages",
-        JSON.stringify(advancedSettings.colorPages)
-      );
-      formData.append("bwPages", JSON.stringify(advancedSettings.bwPages));
-      formData.append("totalCost", cost);
-      formData.append("orderId", currentJobId);
-
-      console.log("📤 Sending file to VPS after payment...");
-
-      const response = await fetch("/api/print", {
-        method: "POST",
-        body: formData,
-      });
-
+      const response = await fetch("/api/printers");
       const result = await response.json();
-      console.log("📥 Response from VPS:", result);
+
+      console.log("Printers:", result.printers);
 
       if (result.success) {
-        alert(
-          `✅ Payment berhasil! File sedang diproses untuk print.\nJob ID: ${result.jobId}`
-        );
-
-        // Reset form
-        setFile(null);
-        setTotalPages(0);
-        setCost(0);
-        setAdvancedSettings({
-          colorPages: [],
-          bwPages: [],
-          copies: 1,
-        });
-        setShowPaymentModal(false);
-        setPaymentData(null);
-      } else {
-        alert(`❌ Gagal mengirim file: ${result.error}`);
+        setPrinters(result.printers);
       }
     } catch (error) {
-      console.error("❌ Error after payment:", error);
-      alert("❌ Error setelah payment: " + error.message);
+      console.error("Error fetching printers:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Fungsi untuk handle payment cancelled
-  const handlePaymentCancelled = () => {
-    setShowPaymentModal(false);
-    setPaymentData(null);
-    alert("❌ Pembayaran dibatalkan. Silakan coba lagi.");
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.log("Location access denied:", error);
+        }
+      );
+    }
   };
 
+  const calculateDistance = (printerLocation) => {
+    if (!userLocation || !printerLocation) return null;
+
+    // Handle both coordinate formats
+    let printerLat, printerLng;
+
+    if (Array.isArray(printerLocation)) {
+      // Format: [lng, lat]
+      [printerLng, printerLat] = printerLocation;
+    } else {
+      // Format: { lat, lng }
+      printerLat = printerLocation.lat;
+      printerLng = printerLocation.lng;
+    }
+
+    // Haversine formula
+    const R = 6371; // Earth radius in km
+    const dLat = ((printerLat - userLocation.lat) * Math.PI) / 180;
+    const dLng = ((printerLng - userLocation.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((userLocation.lat * Math.PI) / 180) *
+        Math.cos((printerLat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    return distance.toFixed(1);
+  };
+
+  const handlePrinterSelect = (printerId) => {
+    router.push(`/${printerId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat printer...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Head>
-        <title>Irc Print - Jasa Print Online</title>
-        <meta
-          name="description"
-          content="Layanan print 24 jam online dengan pembayaran QRIS"
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            🖨️ IRC Print
+          </h1>
+          <p className="text-gray-600">
+            Pilih printer terdekat untuk mulai mencetak
+          </p>
+        </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
-        <div className="bg-white rounded-xl shadow-lg p-4 md:p-8 mb-6 md:mb-8">
-          <div className="text-center mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-2">
-              Irc Print
-            </h1>
-            <p className="text-sm md:text-base text-gray-600">
-              Layanan Print Online
-            </p>
-          </div>
+        {/* Printers Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {printers.map((printer) => {
+            // Normalisasi data printer
+            const normalizedPrinter = {
+              ...printer,
+              // Pastikan ada id
+              id: printer.id || printer.printerId || printer._id,
+              // Normalisasi location coordinates
+              location: {
+                ...printer.location,
+                coordinates: Array.isArray(printer.location?.coordinates)
+                  ? {
+                      lng: printer.location.coordinates[0],
+                      lat: printer.location.coordinates[1],
+                    }
+                  : printer.location?.coordinates,
+              },
+              // Default values untuk data yang missing
+              paperStatus: printer.paperStatus || {
+                available: false,
+                paperCount: 0,
+              },
+              capabilities: printer.capabilities || {
+                color: false,
+                bw: true,
+                duplex: false,
+                stapling: false,
+              },
+              pricing: printer.pricing || {
+                bw: 0,
+                color: 0,
+              },
+            };
 
-          <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-            {/* File Upload Section */}
-            <div className="bg-blue-50 p-4 md:p-6 rounded-lg border border-blue-200">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4 flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 md:h-6 md:w-6 mr-2 text-blue-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+            const distance = calculateDistance(
+              normalizedPrinter.location?.coordinates
+            );
+
+            return (
+              <div
+                key={normalizedPrinter.id}
+                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handlePrinterSelect(normalizedPrinter.id)}
+              >
+                {/* Printer Status Badge */}
+                <div
+                  className={`px-3 py-1 rounded-t-lg ${
+                    normalizedPrinter.status === "online"
+                      ? "bg-green-500"
+                      : normalizedPrinter.status === "offline"
+                      ? "bg-red-500"
+                      : "bg-yellow-500"
+                  }`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                Upload File
-              </h2>
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-4 pb-5 md:pt-5 md:pb-6">
+                  <span className="text-white text-sm font-medium">
+                    {normalizedPrinter.status === "online"
+                      ? "🟢 Online"
+                      : normalizedPrinter.status === "offline"
+                      ? "🔴 Offline"
+                      : "🟡 Maintenance"}
+                  </span>
+                </div>
+
+                <div className="p-6">
+                  {/* Printer Name */}
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                    {normalizedPrinter.name}
+                  </h3>
+
+                  {/* Location & Distance */}
+                  <div className="flex items-center text-gray-600 mb-2">
                     <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-8 w-8 md:h-10 md:w-10 text-blue-500 mb-1 md:mb-2"
+                      className="w-4 h-4 mr-1"
                       fill="none"
-                      viewBox="0 0 24 24"
                       stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                       />
                     </svg>
-                    <p className="text-xs md:text-sm text-gray-600 text-center">
-                      <span className="font-semibold">Klik untuk upload</span>{" "}
-                      atau drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1 text-center">
-                      PDF saja (Maks. 10MB)
-                    </p>
+                    <span className="text-sm">
+                      {normalizedPrinter.location?.address}
+                      {distance && ` • ${distance} km`}
+                    </span>
                   </div>
-                  {isLoading && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                      <div className="bg-white p-4 md:p-6 rounded-lg shadow-lg mx-4">
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-blue-600 mr-3"></div>
-                          <span className="text-sm md:text-base">
-                            Memproses file PDF...
-                          </span>
-                        </div>
-                      </div>
+
+                  {/* Paper Status */}
+                  <div className="flex items-center text-gray-600 mb-3">
+                    <svg
+                      className="w-4 h-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <span className="text-sm">
+                      {normalizedPrinter.paperStatus.available
+                        ? `${normalizedPrinter.paperStatus.paperCount} kertas tersedia`
+                        : "Kertas habis"}
+                    </span>
+                  </div>
+
+                  {/* Capabilities */}
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {normalizedPrinter.capabilities.color && (
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                        Warna
+                      </span>
+                    )}
+                    {normalizedPrinter.capabilities.duplex && (
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                        Duplex
+                      </span>
+                    )}
+                    {normalizedPrinter.capabilities.stapling && (
+                      <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                        Stapling
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Pricing */}
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Hitam Putih:</span>
+                      <span className="font-semibold text-gray-600">
+                        Rp {normalizedPrinter.pricing.bw.toLocaleString()}
+                      </span>
                     </div>
-                  )}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf"
-                    onChange={async (e) => {
-                      const selectedFile = e.target.files[0];
-                      if (selectedFile) {
-                        if (selectedFile.type === "application/pdf") {
-                          const success = await handleFileUpload(selectedFile);
-                          if (!success) {
-                            e.target.value = "";
-                          }
-                        } else {
-                          alert("Hanya file PDF yang diperbolehkan!");
-                          e.target.value = "";
-                        }
-                      }
-                    }}
-                    required
-                  />
-                </label>
-              </div>
-              {file && (
-                <p className="text-xs md:text-sm text-green-600 mt-2 flex items-center justify-center md:justify-start">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  File terpilih: {file.name}
-                </p>
-              )}
-            </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Warna:</span>
+                      <span className="font-semibold text-gray-600">
+                        Rp {normalizedPrinter.pricing.color.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
 
-            {/* Advanced Settings Section */}
-            {file && totalPages > 0 && (
-              <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
-                <PageSelector
-                  totalPages={totalPages}
-                  initialSettings={advancedSettings}
-                  onSettingsChange={(newSettings) => {
-                    setAdvancedSettings(newSettings);
-                    calculateCost(newSettings);
-                  }}
-                  file={file}
-                />
+                  {/* Select Button */}
+                  <button className="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                    Pilih Printer
+                  </button>
+                </div>
               </div>
-            )}
-
-            {/* Payment Section */}
-            {cost > 0 && (
-              <button
-                type="submit"
-                className="w-full px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-              >
-                Bayar dan Print
-              </button>
-            )}
-          </form>
+            );
+          })}
         </div>
-      </main>
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={handlePaymentCancelled}
-        onSuccess={handlePaymentSuccess}
-        paymentData={paymentData}
-        isLoading={isLoading}
-      />
+
+        {/* Empty State */}
+        {printers.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🖨️</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Tidak ada printer tersedia
+            </h3>
+            <p className="text-gray-600">
+              Silakan coba lagi nanti atau hubungi administrator.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
