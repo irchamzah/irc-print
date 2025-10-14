@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { getPDFPageCount, validatePDFFile } from "../../utils/pdfUtils";
 import PaymentModal from "@/components/PaymentModal";
 
+const VPS_API_URL = process.env.VPS_API_URL || "http://103.150.90.67:3001";
+
 const PageSelector = dynamic(() => import("../../components/PageSelector"), {
   ssr: false,
   loading: () => (
@@ -31,13 +33,18 @@ export default function PrinterPage() {
       margins: "NORMAL",
       duplex: false,
     },
-    cost: 0, // TAMBAHKAN COST DI ADVANCED SETTINGS
+    cost: 0,
   });
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [currentJobId, setCurrentJobId] = useState(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [userPoints, setUserPoints] = useState(null);
+  const [checkingPoints, setCheckingPoints] = useState(false);
+  const [refreshingPoints, setRefreshingPoints] = useState(false);
+  const [userSession, setUserSession] = useState(null);
 
   useEffect(() => {
     fetchPrinterDetails();
@@ -53,6 +60,65 @@ export default function PrinterPage() {
       }
     } catch (error) {
       console.error("Error fetching printer:", error);
+    }
+  };
+
+  // FUNGSI REFRESH POINTS BARU
+  const refreshUserPoints = async () => {
+    if (!userSession) {
+      alert("Silakan login terlebih dahulu");
+      return;
+    }
+
+    setRefreshingPoints(true);
+    try {
+      console.log("🔄 Refreshing points for:", userSession.phone);
+
+      const response = await fetch(
+        `${VPS_API_URL}/api/users/${userSession.phone}/points`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("🔄 Refresh points result:", result);
+
+      if (result.success) {
+        if (result.user) {
+          const newPoints = result.points || 0;
+          setUserPoints(newPoints);
+          setUserSession((prev) => ({
+            ...prev,
+            points: newPoints,
+          }));
+
+          // Update localStorage
+          const updatedSession = {
+            ...userSession,
+            points: newPoints,
+            timestamp: Date.now(),
+          };
+          localStorage.setItem("userSession", JSON.stringify(updatedSession));
+
+          alert(
+            `✅ Poin berhasil di-refresh! Poin terbaru: ${newPoints.toFixed(
+              2
+            )} poin`
+          );
+        } else {
+          alert("❌ User tidak ditemukan. Silakan login ulang.");
+          logoutUser();
+        }
+      } else {
+        throw new Error(result.error || "Gagal refresh poin");
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing points:", error);
+      alert("❌ Gagal refresh poin: " + error.message);
+    } finally {
+      setRefreshingPoints(false);
     }
   };
 
@@ -86,7 +152,7 @@ export default function PrinterPage() {
           margins: "NORMAL",
           duplex: false,
         },
-        cost: 0, // Akan diupdate oleh PageSelector
+        cost: 0,
       };
 
       setAdvancedSettings(initialSettings);
@@ -101,7 +167,6 @@ export default function PrinterPage() {
     }
   };
 
-  // Update handler untuk menerima settings dari PageSelector
   const handleSettingsChange = (newSettings) => {
     console.log("🔄 Settings updated from PageSelector:", newSettings);
     setAdvancedSettings(newSettings);
@@ -115,7 +180,6 @@ export default function PrinterPage() {
       return;
     }
 
-    // Gunakan cost dari advancedSettings (dari PageSelector)
     const finalCost = advancedSettings.cost || 0;
 
     if (finalCost <= 0) {
@@ -134,7 +198,7 @@ export default function PrinterPage() {
 
       const requestData = {
         orderId: orderId,
-        amount: finalCost, // GUNAKAN COST DARI PAGE SELECTOR
+        amount: finalCost,
         fileInfo: {
           name: file.name,
           size: file.size,
@@ -147,6 +211,7 @@ export default function PrinterPage() {
           printSettings: advancedSettings.printSettings || {},
         },
         totalCost: finalCost,
+        ...(userSession && { phoneNumber: userSession.phone }),
       };
 
       console.log("💰 Payment request:", requestData);
@@ -157,8 +222,9 @@ export default function PrinterPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: finalCost, // GUNAKAN COST DARI PAGE SELECTOR
+          amount: finalCost,
           orderId: orderId,
+          ...(userSession && { phoneNumber: userSession.phone }),
         }),
       });
 
@@ -175,7 +241,7 @@ export default function PrinterPage() {
       setPaymentData({
         qrCode: paymentResult.qr_code,
         redirectUrl: paymentResult.redirect_url,
-        amount: finalCost, // GUNAKAN COST DARI PAGE SELECTOR
+        amount: finalCost,
         orderId: orderId,
       });
 
@@ -193,14 +259,15 @@ export default function PrinterPage() {
     try {
       setIsLoading(true);
 
-      // Hitung total halaman yang akan diprint
       const totalPagesToPrint =
         (advancedSettings.colorPages.length + advancedSettings.bwPages.length) *
         advancedSettings.copies;
 
       console.log(`📄 Printing ${totalPagesToPrint} pages...`);
 
-      // 1. Upload file ke VPS setelah payment success
+      const pointsToAdd = (advancedSettings.cost / 2000).toFixed(2);
+      console.log(`🎯 Points to add: ${pointsToAdd}`);
+
       const formData = new FormData();
       formData.append("pdf", file);
       formData.append("copies", advancedSettings.copies);
@@ -213,42 +280,42 @@ export default function PrinterPage() {
       formData.append("totalCost", advancedSettings.cost);
       formData.append("orderId", currentJobId);
       formData.append("totalPages", totalPagesToPrint);
+      formData.append("pointsToAdd", pointsToAdd);
 
-      console.log("📤 Sending file to VPS after payment...");
+      if (userSession) {
+        formData.append("phoneNumber", userSession.phone);
+      }
 
-      const response = await fetch("/api/print", {
+      console.log("📤 Sending file to /api/print...");
+
+      const response = await fetch(`${VPS_API_URL}/api/print`, {
         method: "POST",
         body: formData,
       });
 
       const result = await response.json();
-      console.log("📥 Response from VPS:", result);
+      console.log("📥 Response from VPS /api/print:", result);
 
       if (result.success) {
+        // Auto refresh points setelah print berhasil
+        if (userSession) {
+          setTimeout(() => {
+            refreshUserPoints();
+          }, 3000); // Refresh setelah 3 detik
+        }
+
         alert(
           `✅ Payment berhasil! File sedang diproses untuk print.\n` +
             `📄 ${totalPagesToPrint} halaman akan dicetak.\n` +
-            `Job ID: ${result.jobId}`
+            (userSession
+              ? `🎉 +${pointsToAdd} poin telah ditambahkan!\nPoin akan di-update otomatis...\n`
+              : "") +
+            `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`
         );
 
-        // Reset form
-        setFile(null);
-        setTotalPages(0);
-        setAdvancedSettings({
-          colorPages: [],
-          bwPages: [],
-          copies: 1,
-          printSettings: {
-            paperSize: "A4",
-            orientation: "PORTRAIT",
-            quality: "NORMAL",
-            margins: "NORMAL",
-            duplex: false,
-          },
-          cost: 0,
-        });
-        setShowPaymentModal(false);
-        setPaymentData(null);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
         alert(`❌ Gagal mengirim file: ${result.error}`);
       }
@@ -266,6 +333,165 @@ export default function PrinterPage() {
     alert("❌ Pembayaran dibatalkan. Silakan coba lagi.");
   };
 
+  const checkUserPoints = async () => {
+    if (!phoneNumber.trim()) {
+      alert("Silakan masukkan nomor HP terlebih dahulu");
+      return;
+    }
+
+    const cleanPhone = phoneNumber.replace(/\D/g, "");
+    if (cleanPhone.length < 10) {
+      alert("Nomor HP harus minimal 10 digit");
+      return;
+    }
+
+    setCheckingPoints(true);
+    try {
+      console.log("🔍 Checking points for:", cleanPhone);
+
+      const response = await fetch(
+        `${VPS_API_URL}/api/users/${cleanPhone}/points`
+      );
+
+      console.log("📡 Direct VPS response status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`VPS error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("📊 Direct VPS points result:", result);
+
+      if (result.success) {
+        if (result.user) {
+          setUserPoints(result.points);
+          setUserSession({
+            phone: cleanPhone,
+            points: result.points,
+            name: result.user.name || `User ${cleanPhone}`,
+          });
+
+          localStorage.setItem(
+            "userSession",
+            JSON.stringify({
+              phone: cleanPhone,
+              points: result.points,
+              name: result.user.name || `User ${cleanPhone}`,
+              timestamp: Date.now(),
+            })
+          );
+
+          alert(
+            `✅ Poin berhasil dicek! Anda memiliki ${result.points.toFixed(
+              2
+            )} poin.`
+          );
+        } else if (result.user === null) {
+          console.log("📝 User not found, creating new user...");
+          await createNewUserDirect(cleanPhone);
+        }
+      } else {
+        throw new Error(result.error || "Gagal memeriksa poin");
+      }
+    } catch (error) {
+      console.error("❌ Error checking points:", error);
+      await createNewUserDirect(cleanPhone, true);
+    } finally {
+      setCheckingPoints(false);
+    }
+  };
+
+  const createNewUserDirect = async (phone, isFallback = false) => {
+    try {
+      console.log("👤 Creating new user for:", phone);
+
+      const createResponse = await fetch(`${VPS_API_URL}/api/users/points`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: phone,
+          points: 0,
+          amount: 0,
+          orderId: `init-${Date.now()}`,
+          fileName: "user-initialization.pdf",
+        }),
+      });
+
+      if (createResponse.ok) {
+        const createResult = await createResponse.json();
+
+        setUserPoints(0);
+        setUserSession({
+          phone: phone,
+          points: 0,
+          name: `User ${phone}`,
+        });
+
+        localStorage.setItem(
+          "userSession",
+          JSON.stringify({
+            phone: phone,
+            points: 0,
+            name: `User ${phone}`,
+            timestamp: Date.now(),
+          })
+        );
+
+        if (isFallback) {
+          alert("✅ Nomor HP berhasil didaftarkan! Mulai dengan 0 poin.");
+        } else {
+          alert("✅ Akun baru berhasil dibuat! Anda mendapatkan 0 poin awal.");
+        }
+      } else {
+        throw new Error("Gagal membuat user baru");
+      }
+    } catch (error) {
+      console.error("❌ Error creating user:", error);
+
+      setUserPoints(0);
+      setUserSession({
+        phone: phone,
+        points: 0,
+        name: `User ${phone}`,
+      });
+
+      localStorage.setItem(
+        "userSession",
+        JSON.stringify({
+          phone: phone,
+          points: 0,
+          name: `User ${phone}`,
+          timestamp: Date.now(),
+        })
+      );
+
+      alert("⚠️ Sistem poin sedang maintenance. Lanjut dengan 0 poin.");
+    }
+  };
+
+  const logoutUser = () => {
+    setUserSession(null);
+    setUserPoints(null);
+    setPhoneNumber("");
+    localStorage.removeItem("userSession");
+  };
+
+  useEffect(() => {
+    const savedSession = localStorage.getItem("userSession");
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      if (Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
+        setUserSession(session);
+        setUserPoints(session.points);
+        setPhoneNumber(session.phone);
+      } else {
+        localStorage.removeItem("userSession");
+      }
+    }
+  }, []);
+
   if (!printer) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -279,7 +505,6 @@ export default function PrinterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Printer Header - Responsive */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -315,10 +540,8 @@ export default function PrinterPage() {
         </div>
       </div>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          {/* Form Content */}
           <div className="p-4 sm:p-6 lg:p-8">
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
               {/* File Upload Section */}
@@ -415,19 +638,17 @@ export default function PrinterPage() {
                 )}
               </div>
 
-              {/* Advanced Settings Section */}
               {file && totalPages > 0 && (
                 <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 sm:p-6">
                   <PageSelector
                     totalPages={totalPages}
                     initialSettings={advancedSettings}
-                    onSettingsChange={handleSettingsChange} // GUNAKAN HANDLER BARU
+                    onSettingsChange={handleSettingsChange}
                     file={file}
                   />
                 </div>
               )}
 
-              {/* Cost Summary */}
               {advancedSettings.cost > 0 && (
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -448,7 +669,139 @@ export default function PrinterPage() {
                 </div>
               )}
 
-              {/* Payment Button */}
+              {/* Section Poin Reward dengan Tombol Refresh */}
+              <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 sm:p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <svg
+                    className="w-5 h-5 mr-2 text-yellow-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Poin Reward
+                </h3>
+
+                {!userSession ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nomor HP untuk Cek Poin
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          placeholder="Contoh: 085117038583"
+                          className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white text-gray-700"
+                        />
+                        <button
+                          type="button"
+                          onClick={checkUserPoints}
+                          disabled={checkingPoints}
+                          className="px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:bg-yellow-400 transition-colors font-medium cursor-pointer"
+                        >
+                          {checkingPoints ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
+                          ) : (
+                            "Check Point"
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Masukkan nomor HP untuk melihat dan mendapatkan poin
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          Nomor HP terdaftar:
+                        </p>
+                        <p className="font-semibold text-gray-800">
+                          {userSession.phone}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {/* TOMBOL REFRESH POINTS */}
+                        <button
+                          onClick={refreshUserPoints}
+                          disabled={refreshingPoints}
+                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:bg-blue-50 transition-colors cursor-pointer flex items-center gap-1"
+                          title="Refresh poin terbaru"
+                        >
+                          {refreshingPoints ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
+                          ) : (
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
+                            </svg>
+                          )}
+                          Refresh
+                        </button>
+                        <button
+                          onClick={logoutUser}
+                          className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors cursor-pointer"
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border-2 border-yellow-200">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">Total Poin Anda</p>
+                        <p className="text-3xl font-bold text-yellow-600">
+                          {typeof userPoints === "number"
+                            ? userPoints.toFixed(2)
+                            : "0.00"}{" "}
+                          Poin
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Terakhir update: {new Date().toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {advancedSettings.cost > 0 && userSession && (
+                      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-700">
+                            Poin yang akan didapat:
+                          </span>
+                          <span className="text-lg font-bold text-green-600">
+                            +{(advancedSettings.cost / 2000).toFixed(2)} poin
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Setiap Rp 2.000 = 1 poin • Poin akan ditambahkan
+                          otomatis setelah print
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {advancedSettings.cost > 0 && (
                 <button
                   type="submit"
@@ -470,7 +823,6 @@ export default function PrinterPage() {
         </div>
       </main>
 
-      {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-sm w-full">
