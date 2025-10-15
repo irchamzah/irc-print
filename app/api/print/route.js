@@ -12,7 +12,7 @@ export async function POST(request) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 detik timeout
 
-    const response = await fetch(`${VPS_API_URL}/api/print/direct`, {
+    const response = await fetch(`${VPS_API_URL}/api/print`, {
       method: "POST",
       body: formData,
       signal: controller.signal,

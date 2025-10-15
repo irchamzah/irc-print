@@ -6,25 +6,11 @@ const VPS_API_URL = process.env.VPS_API_URL || "http://103.150.90.67:3001";
 export async function GET(request, { params }) {
   try {
     const { phone } = await params;
-    console.log("🔍 [FRONTEND] Checking points for phone:", phone);
 
-    // Validate phone number
-    if (!phone || phone.length < 10) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Nomor HP tidak valid",
-        },
-        { status: 400 }
-      );
-    }
+    // Tambahkan timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    console.log(
-      "🌐 [FRONTEND] Calling VPS API:",
-      `${VPS_API_URL}/api/users/${phone}/points`
-    );
-
-    // Test 1: Coba GET user points dulu
     const getResponse = await fetch(
       `${VPS_API_URL}/api/users/${phone}/points`,
       {
@@ -32,9 +18,11 @@ export async function GET(request, { params }) {
         headers: {
           "Content-Type": "application/json",
         },
-        timeout: 8000,
+        signal: controller.signal, // ← Gunakan signal untuk timeout
       }
     );
+
+    clearTimeout(timeoutId);
 
     console.log("📡 [FRONTEND] VPS GET response status:", getResponse.status);
 
@@ -67,6 +55,13 @@ export async function GET(request, { params }) {
     console.log("🔄 [FRONTEND] GET failed, trying to create new user...");
     return await createNewUser(phone);
   } catch (error) {
+    if (error.name === "AbortError") {
+      console.error("⏰ Request timeout");
+      return NextResponse.json(
+        { success: false, error: "Request timeout" },
+        { status: 408 }
+      );
+    }
     console.error(
       "❌ [FRONTEND] Error in /api/users/[phone]/points:",
       error.message

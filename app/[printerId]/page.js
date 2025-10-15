@@ -74,9 +74,7 @@ export default function PrinterPage() {
     try {
       console.log("🔄 Refreshing points for:", userSession.phone);
 
-      const response = await fetch(
-        `${VPS_API_URL}/api/users/${userSession.phone}/points`
-      );
+      const response = await fetch(`/api/users/${userSession.phone}/points`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -288,7 +286,7 @@ export default function PrinterPage() {
 
       console.log("📤 Sending file to /api/print...");
 
-      const response = await fetch(`${VPS_API_URL}/api/print`, {
+      const response = await fetch(`/api/print`, {
         method: "POST",
         body: formData,
       });
@@ -405,7 +403,7 @@ export default function PrinterPage() {
     try {
       console.log("👤 Creating new user for:", phone);
 
-      const createResponse = await fetch(`${VPS_API_URL}/api/users/points`, {
+      const createResponse = await fetch(`/api/users/points`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
