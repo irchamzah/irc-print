@@ -94,7 +94,7 @@ export default function PrinterPage() {
         localStorage.setItem("userSession", JSON.stringify(updatedSession));
 
         alert(
-          `✅ Poin berhasil di-refresh! Poin terbaru: ${newPoints.toFixed(
+          `✅ Point berhasil di-refresh! Point terbaru: ${newPoints.toFixed(
             2
           )} poin`
         );
@@ -266,7 +266,7 @@ export default function PrinterPage() {
           `✅ Payment berhasil! File sedang diproses untuk print.\n` +
             `📄 ${totalPagesToPrint} halaman akan dicetak.\n` +
             (userSession
-              ? `🎉 +${pointsToAdd} poin telah ditambahkan!\nPoin akan di-update otomatis...\n`
+              ? `🎉 +${pointsToAdd} point telah ditambahkan!\nPoint akan di-update otomatis...\n`
               : "") +
             `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`
         );
@@ -333,9 +333,9 @@ export default function PrinterPage() {
           );
 
           alert(
-            `✅ Poin berhasil dicek! Anda memiliki ${result.points.toFixed(
+            `✅ Point berhasil dicek! Anda memiliki ${result.points.toFixed(
               2
-            )} poin.`
+            )} point.`
           );
         } else if (result.user === null) {
           await createNewUserDirect(cleanPhone);
@@ -388,9 +388,9 @@ export default function PrinterPage() {
         );
 
         if (isFallback) {
-          alert("✅ Nomor HP berhasil didaftarkan! Mulai dengan 0 poin.");
+          alert("✅ Nomor HP berhasil didaftarkan! Mulai dengan 0 point.");
         } else {
-          alert("✅ Akun baru berhasil dibuat! Anda mendapatkan 0 poin awal.");
+          alert("✅ Akun baru berhasil dibuat! Anda mendapatkan 0 point awal.");
         }
       } else {
         throw new Error("Gagal membuat user baru");
@@ -415,7 +415,7 @@ export default function PrinterPage() {
         })
       );
 
-      alert("⚠️ Sistem poin sedang maintenance. Lanjut dengan 0 poin.");
+      alert("⚠️ Sistem point sedang maintenance. Lanjut dengan 0 point.");
     }
   };
 
@@ -617,7 +617,7 @@ export default function PrinterPage() {
                 </div>
               )}
 
-              {/* Section Poin Reward */}
+              {/* Section Point Reward */}
               <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
                   <svg
@@ -633,7 +633,7 @@ export default function PrinterPage() {
                       d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
                     />
                   </svg>
-                  Poin Reward
+                  Point Reward
                 </h3>
 
                 {!userSession ? (
@@ -684,7 +684,7 @@ export default function PrinterPage() {
                           onClick={refreshUserPoints}
                           disabled={refreshingPoints}
                           className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:bg-blue-50 transition-colors cursor-pointer flex items-center gap-1"
-                          title="Refresh poin terbaru"
+                          title="Refresh point terbaru"
                         >
                           {refreshingPoints ? (
                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
@@ -714,16 +714,46 @@ export default function PrinterPage() {
                       </div>
                     </div>
 
+                    {/* BAGIAN INI YANG DITAMBAH TOMBOL TUKAR POINT */}
                     <div className="bg-white rounded-lg p-4 border-2 border-yellow-200">
                       <div className="text-center">
-                        <p className="text-sm text-gray-600">Total Poin Anda</p>
+                        <p className="text-sm text-gray-600">
+                          Total Point Anda
+                        </p>
                         <p className="text-3xl font-bold text-yellow-600">
                           {typeof userPoints === "number"
                             ? userPoints.toFixed(2)
                             : "0.00"}{" "}
-                          Poin
+                          Point
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+
+                        {/* TOMBOL TUKAR POINT */}
+                        <button
+                          onClick={() =>
+                            window.open(
+                              "https://irc-store-one.vercel.app/product",
+                              "_blank"
+                            )
+                          }
+                          className="mt-3 w-full max-w-xs mx-auto px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105 font-medium text-sm cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                            />
+                          </svg>
+                          Tukar Point
+                        </button>
+
+                        <p className="text-xs text-gray-500 mt-2">
                           Terakhir update: {new Date().toLocaleTimeString()}
                         </p>
                       </div>
@@ -733,14 +763,14 @@ export default function PrinterPage() {
                       <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-700">
-                            Poin yang akan didapat:
+                            Point yang akan didapat:
                           </span>
                           <span className="text-lg font-bold text-green-600">
                             +{(advancedSettings.cost / 2000).toFixed(2)} poin
                           </span>
                         </div>
                         <p className="text-xs text-gray-600 mt-1">
-                          Setiap Rp 2.000 = 1 poin • Poin akan ditambahkan
+                          Setiap Rp 2.000 = 1 point • Point akan ditambahkan
                           otomatis setelah print
                         </p>
                       </div>
