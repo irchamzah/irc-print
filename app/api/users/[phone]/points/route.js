@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 // GUNAKAN HTTP, BUKAN HTTPS
-const VPS_API_URL = process.env.VPS_API_URL || "http://103.150.90.67:3001";
+const VPS_API_URL = process.env.VPS_API_URL;
 
 export async function GET(request, { params }) {
   try {
@@ -72,6 +72,60 @@ export async function GET(request, { params }) {
         success: false,
         error: "Service sedang tidak tersedia",
         details: "Silakan coba beberapa saat lagi",
+      },
+      { status: 503 }
+    );
+  }
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch(`${VPS_API_URL}/api/users/points`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    console.log("📡 [FRONTEND] VPS POST response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ [FRONTEND] VPS POST failed:", errorText);
+      throw new Error(`VPS API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("📝 [FRONTEND] VPS POST success:", result);
+
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.error("⏰ Request timeout");
+      return NextResponse.json(
+        { success: false, error: "Request timeout" },
+        { status: 408 }
+      );
+    }
+
+    console.error(
+      "❌ [FRONTEND] Error in POST /api/users/points:",
+      error.message
+    );
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Service sedang tidak tersedia",
+        details: error.message,
       },
       { status: 503 }
     );

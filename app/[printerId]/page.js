@@ -5,8 +5,6 @@ import dynamic from "next/dynamic";
 import { getPDFPageCount, validatePDFFile } from "../../utils/pdfUtils";
 import PaymentModal from "@/components/PaymentModal";
 
-const VPS_API_URL = process.env.VPS_API_URL || "http://103.150.90.67:3001";
-
 const PageSelector = dynamic(() => import("../../components/PageSelector"), {
   ssr: false,
   loading: () => (
@@ -63,7 +61,6 @@ export default function PrinterPage() {
     }
   };
 
-  // FUNGSI REFRESH POINTS BARU
   const refreshUserPoints = async () => {
     if (!userSession) {
       alert("Silakan login terlebih dahulu");
@@ -72,8 +69,6 @@ export default function PrinterPage() {
 
     setRefreshingPoints(true);
     try {
-      console.log("🔄 Refreshing points for:", userSession.phone);
-
       const response = await fetch(`/api/users/${userSession.phone}/points`);
 
       if (!response.ok) {
@@ -81,36 +76,30 @@ export default function PrinterPage() {
       }
 
       const result = await response.json();
-      console.log("🔄 Refresh points result:", result);
 
-      if (result.success) {
-        if (result.user) {
-          const newPoints = result.points || 0;
-          setUserPoints(newPoints);
-          setUserSession((prev) => ({
-            ...prev,
-            points: newPoints,
-          }));
+      if (result.success && result.user) {
+        const newPoints = result.points || 0;
+        setUserPoints(newPoints);
+        setUserSession((prev) => ({
+          ...prev,
+          points: newPoints,
+        }));
 
-          // Update localStorage
-          const updatedSession = {
-            ...userSession,
-            points: newPoints,
-            timestamp: Date.now(),
-          };
-          localStorage.setItem("userSession", JSON.stringify(updatedSession));
+        const updatedSession = {
+          ...userSession,
+          points: newPoints,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem("userSession", JSON.stringify(updatedSession));
 
-          alert(
-            `✅ Poin berhasil di-refresh! Poin terbaru: ${newPoints.toFixed(
-              2
-            )} poin`
-          );
-        } else {
-          alert("❌ User tidak ditemukan. Silakan login ulang.");
-          logoutUser();
-        }
+        alert(
+          `✅ Poin berhasil di-refresh! Poin terbaru: ${newPoints.toFixed(
+            2
+          )} poin`
+        );
       } else {
-        throw new Error(result.error || "Gagal refresh poin");
+        alert("❌ User tidak ditemukan. Silakan login ulang.");
+        logoutUser();
       }
     } catch (error) {
       console.error("❌ Error refreshing points:", error);
@@ -166,7 +155,6 @@ export default function PrinterPage() {
   };
 
   const handleSettingsChange = (newSettings) => {
-    console.log("🔄 Settings updated from PageSelector:", newSettings);
     setAdvancedSettings(newSettings);
   };
 
@@ -194,26 +182,6 @@ export default function PrinterPage() {
         .toString(36)
         .substr(2, 9)}`;
 
-      const requestData = {
-        orderId: orderId,
-        amount: finalCost,
-        fileInfo: {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        },
-        printSettings: {
-          copies: advancedSettings.copies,
-          colorPages: advancedSettings.colorPages,
-          bwPages: advancedSettings.bwPages,
-          printSettings: advancedSettings.printSettings || {},
-        },
-        totalCost: finalCost,
-        ...(userSession && { phoneNumber: userSession.phone }),
-      };
-
-      console.log("💰 Payment request:", requestData);
-
       const paymentResponse = await fetch("/api/payment", {
         method: "POST",
         headers: {
@@ -233,8 +201,6 @@ export default function PrinterPage() {
           paymentResult.error || "Gagal membuat transaksi payment"
         );
       }
-
-      console.log("✅ Payment transaction created:", paymentResult);
 
       setPaymentData({
         qrCode: paymentResult.qr_code,
@@ -261,10 +227,7 @@ export default function PrinterPage() {
         (advancedSettings.colorPages.length + advancedSettings.bwPages.length) *
         advancedSettings.copies;
 
-      console.log(`📄 Printing ${totalPagesToPrint} pages...`);
-
       const pointsToAdd = (advancedSettings.cost / 2000).toFixed(2);
-      console.log(`🎯 Points to add: ${pointsToAdd}`);
 
       const formData = new FormData();
       formData.append("pdf", file);
@@ -284,22 +247,18 @@ export default function PrinterPage() {
         formData.append("phoneNumber", userSession.phone);
       }
 
-      console.log("📤 Sending file to /api/print...");
-
       const response = await fetch(`/api/print`, {
         method: "POST",
         body: formData,
       });
 
       const result = await response.json();
-      console.log("📥 Response from VPS /api/print:", result);
 
       if (result.success) {
-        // Auto refresh points setelah print berhasil
         if (userSession) {
           setTimeout(() => {
             refreshUserPoints();
-          }, 3000); // Refresh setelah 3 detik
+          }, 3000);
         }
 
         alert(
@@ -345,20 +304,13 @@ export default function PrinterPage() {
 
     setCheckingPoints(true);
     try {
-      console.log("🔍 Checking points for:", cleanPhone);
-
-      const response = await fetch(
-        `${VPS_API_URL}/api/users/${cleanPhone}/points`
-      );
-
-      console.log("📡 Direct VPS response status:", response.status);
+      const response = await fetch(`/api/users/${cleanPhone}/points`);
 
       if (!response.ok) {
-        throw new Error(`VPS error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log("📊 Direct VPS points result:", result);
 
       if (result.success) {
         if (result.user) {
@@ -385,7 +337,6 @@ export default function PrinterPage() {
             )} poin.`
           );
         } else if (result.user === null) {
-          console.log("📝 User not found, creating new user...");
           await createNewUserDirect(cleanPhone);
         }
       } else {
@@ -401,8 +352,6 @@ export default function PrinterPage() {
 
   const createNewUserDirect = async (phone, isFallback = false) => {
     try {
-      console.log("👤 Creating new user for:", phone);
-
       const createResponse = await fetch(`/api/users/points`, {
         method: "POST",
         headers: {
@@ -667,7 +616,7 @@ export default function PrinterPage() {
                 </div>
               )}
 
-              {/* Section Poin Reward dengan Tombol Refresh */}
+              {/* Section Poin Reward */}
               <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
                   <svg
@@ -730,7 +679,6 @@ export default function PrinterPage() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        {/* TOMBOL REFRESH POINTS */}
                         <button
                           onClick={refreshUserPoints}
                           disabled={refreshingPoints}
