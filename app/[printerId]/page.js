@@ -70,6 +70,7 @@ export default function PrinterPage() {
     setRefreshingPoints(true);
     try {
       const response = await fetch(`/api/users/${userSession.phone}/points`);
+      console.log("📡 [FRONTEND] Refresh points response:", response);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
