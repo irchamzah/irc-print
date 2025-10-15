@@ -7,7 +7,6 @@ export default function PrintersPage() {
   const [printers, setPrinters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
-  const [locationAccess, setLocationAccess] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -40,11 +39,9 @@ export default function PrintersPage() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
-          setLocationAccess(true);
         },
         (error) => {
           console.log("Location access denied:", error);
-          setLocationAccess(false);
         }
       );
     }
@@ -106,10 +103,6 @@ export default function PrintersPage() {
   const getMapsLink = (location) => {
     if (!location) return "#";
 
-    if (location.mapsUrl && location.mapsUrl !== "#") {
-      return location.mapsUrl;
-    }
-
     const coordinates = location.coordinates;
     if (!coordinates) return "#";
 
@@ -137,19 +130,6 @@ export default function PrintersPage() {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place=${label}`;
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "online":
-        return "bg-green-500";
-      case "offline":
-        return "bg-red-500";
-      case "maintenance":
-        return "bg-yellow-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
   const getStatusIcon = (status) => {
     switch (status) {
       case "online":
@@ -160,6 +140,19 @@ export default function PrintersPage() {
         return "🟡";
       default:
         return "⚪";
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "online":
+        return "bg-green-500";
+      case "offline":
+        return "bg-red-500";
+      case "maintenance":
+        return "bg-yellow-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
@@ -191,13 +184,13 @@ export default function PrintersPage() {
             <div className="mt-4 flex items-center justify-center">
               <div
                 className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                  locationAccess
+                  userLocation
                     ? "bg-green-100 text-green-800"
                     : "bg-yellow-100 text-yellow-800"
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                {locationAccess
+                {userLocation
                   ? "Lokasi terdeteksi"
                   : "Izinkan akses lokasi untuk jarak terdekat"}
               </div>
@@ -227,16 +220,6 @@ export default function PrintersPage() {
                 available: false,
                 paperCount: 0,
               },
-              capabilities: printer.capabilities || {
-                color: false,
-                bw: true,
-                duplex: false,
-                stapling: false,
-              },
-              pricing: printer.pricing || {
-                bw: 0,
-                color: 0,
-              },
             };
 
             const distance = calculateDistance(
@@ -259,11 +242,6 @@ export default function PrintersPage() {
                       {getStatusIcon(normalizedPrinter.status)}{" "}
                       {normalizedPrinter.status.toUpperCase()}
                     </span>
-                    {/* <div className="bg-white bg-opacity-20 rounded-full px-2 py-1">
-                      <span className="text-white text-xs font-medium">
-                        {normalizedPrinter.paperStatus?.paperCount || 0} kertas
-                      </span>
-                    </div> */}
                   </div>
                 </div>
 
@@ -292,7 +270,7 @@ export default function PrintersPage() {
                             </span>
                           )}
                           <a
-                            href={getMapsLink(normalizedPrinter.location)}
+                            href={normalizedPrinter.location.mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-500 hover:text-blue-700 text-xs flex items-center"
@@ -334,46 +312,6 @@ export default function PrintersPage() {
                     </div>
                   </div>
 
-                  {/* Capabilities */}
-                  {/* {normalizedPrinter.capabilities && (
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {normalizedPrinter.capabilities.color && (
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full border border-blue-200">
-                          🟡 Warna
-                        </span>
-                      )}
-                      {normalizedPrinter.capabilities.duplex && (
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full border border-green-200">
-                          🔄 Duplex
-                        </span>
-                      )}
-                      {normalizedPrinter.capabilities.stapling && (
-                        <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full border border-purple-200">
-                          📎 Stapling
-                        </span>
-                      )}
-                    </div>
-                  )} */}
-
-                  {/* Pricing */}
-                  {/* <div className="border-t pt-3">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Hitam Putih:</span>
-                      <span className="font-semibold text-gray-800">
-                        Rp{" "}
-                        {normalizedPrinter.pricing?.bw?.toLocaleString() || "0"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm mt-1">
-                      <span className="text-gray-600">Warna:</span>
-                      <span className="font-semibold text-gray-800">
-                        Rp{" "}
-                        {normalizedPrinter.pricing?.color?.toLocaleString() ||
-                          "0"}
-                      </span>
-                    </div>
-                  </div> */}
-
                   {/* Select Button */}
                   <button
                     onClick={() => handlePrinterSelect(normalizedPrinter.id)}
@@ -405,26 +343,6 @@ export default function PrintersPage() {
                 🔄 Coba Lagi
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Loading Skeleton */}
-        {loading && (
-          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden"
-              >
-                <div className="bg-gray-300 h-4 animate-pulse"></div>
-                <div className="p-6 space-y-3">
-                  <div className="bg-gray-200 h-6 rounded animate-pulse"></div>
-                  <div className="bg-gray-200 h-4 rounded animate-pulse"></div>
-                  <div className="bg-gray-200 h-4 rounded animate-pulse w-3/4"></div>
-                  <div className="bg-gray-200 h-10 rounded animate-pulse mt-4"></div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </main>

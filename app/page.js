@@ -1,97 +1,42 @@
-"use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+// "use client";
+// import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function HomePage() {
-  const [printers, setPrinters] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState(null);
-  const router = useRouter();
+  // const [printers, setPrinters] = useState([]);
+  // const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPrinters();
-    getUserLocation();
-  }, []);
+  // useEffect(() => {
+  //   fetchPrinters();
+  // }, []);
 
-  const fetchPrinters = async () => {
-    try {
-      const response = await fetch("/api/printers");
-      const result = await response.json();
+  // const fetchPrinters = async () => {
+  //   try {
+  //     const response = await fetch("/api/printers");
+  //     const result = await response.json();
 
-      console.log("Printers:", result.printers);
+  //     console.log("Printers:", result.printers);
 
-      if (result.success) {
-        setPrinters(result.printers);
-      }
-    } catch (error) {
-      console.error("Error fetching printers:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     if (result.success) {
+  //       setPrinters(result.printers);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching printers:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const getUserLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.log("Location access denied:", error);
-        }
-      );
-    }
-  };
-
-  const calculateDistance = (printerLocation) => {
-    if (!userLocation || !printerLocation) return null;
-
-    // Handle both coordinate formats
-    let printerLat, printerLng;
-
-    if (Array.isArray(printerLocation)) {
-      // Format: [lng, lat]
-      [printerLng, printerLat] = printerLocation;
-    } else {
-      // Format: { lat, lng }
-      printerLat = printerLocation.lat;
-      printerLng = printerLocation.lng;
-    }
-
-    // Haversine formula
-    const R = 6371; // Earth radius in km
-    const dLat = ((printerLat - userLocation.lat) * Math.PI) / 180;
-    const dLng = ((printerLng - userLocation.lng) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((userLocation.lat * Math.PI) / 180) *
-        Math.cos((printerLat * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-
-    return distance.toFixed(1);
-  };
-
-  const handlePrinterSelect = (printerId) => {
-    router.push(`/${printerId}`);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat printer...</p>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+  //         <p className="mt-4 text-gray-600">Memuat printer...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">
