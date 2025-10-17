@@ -5,6 +5,9 @@ export async function POST(request) {
   try {
     const { amount, orderId } = await request.json();
 
+    // --- LOGGING #1: Payload dari Klien ---
+    console.log("Payload received from client:", { amount, orderId });
+
     // Initialize Snap client
     let snap = new midtransClient.Snap({
       isProduction: false,
@@ -24,8 +27,14 @@ export async function POST(request) {
       enabled_payments: ["qris"], // Hanya QRIS
     };
 
+    // --- LOGGING #2: Payload ke Midtrans ---
+    console.log("Payload sent to Midtrans:", JSON.stringify(parameter));
+
     // Create transaction
     const transaction = await snap.createTransaction(parameter);
+
+    // --- LOGGING #3: Respon dari Midtrans ---
+    console.log("Response from Midtrans:", JSON.stringify(transaction));
 
     return NextResponse.json({
       success: true,
@@ -34,7 +43,9 @@ export async function POST(request) {
       qr_code: transaction.qr_code, // QRIS code URL
     });
   } catch (error) {
-    console.error("Payment error:", error);
+    // --- LOGGING #4: Error Detail ---
+    console.error("Payment error detail:", error);
+    // --------------------------------
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }
