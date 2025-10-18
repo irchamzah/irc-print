@@ -15,7 +15,7 @@ export async function GET(request) {
 
     // Initialize Snap client
     let snap = new midtransClient.Snap({
-      isProduction: false,
+      isProduction: process.env.MIDTRANS_ENVIRONMENT === "production",
       serverKey: process.env.MIDTRANS_SERVER_KEY,
     });
 
