@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const MIDTRANS_ENVIRONMENT = "production";
+const MIDTRANS_ENVIRONMENT = "sandbox";
 const MIDTRANS_CLIENT_KEY_SANDBOX = "Mid-client-wPXTxafwqLeUkNQD";
 const MIDTRANS_CLIENT_KEY_PRODUCTION = "Mid-client-S7IFqCPzEbOVyOrF";
 
@@ -18,6 +18,11 @@ export default function PaymentModal({
   const [snapLoaded, setSnapLoaded] = useState(false);
   const [snapError, setSnapError] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isSnapOpen, setIsSnapOpen] = useState(false);
+
+  // Gunakan ref untuk tracking
+  const snapScriptRef = useRef(null);
+  const isSnapInitializedRef = useRef(false);
 
   const openSnapPayment = () => {
     if (!paymentData?.token || !window.snap) {
@@ -25,32 +30,45 @@ export default function PaymentModal({
       return;
     }
 
-    setSnapError(false);
+    // Cegah multiple calls
+    if (isSnapOpen) {
+      console.log("⚠️ Snap sudah terbuka, mengabaikan panggilan kedua");
+      return;
+    }
 
-    // @ts-ignore
-    window.snap.pay(paymentData.token, {
-      onSuccess: function (result) {
-        console.log("Payment success:", result);
-        // Beri delay untuk memastikan status sudah update di Midtrans
-        setTimeout(() => {
-          onSuccess();
-        }, 2000);
-      },
-      onPending: function (result) {
-        console.log("Payment pending:", result);
-        // Untuk pending payment, kita biarkan transaksi tetap tersimpan
-        alert("🔄 Pembayaran pending. Silakan selesaikan pembayaran Anda.");
-      },
-      onError: function (result) {
-        console.log("Payment error:", result);
-        // Untuk error, transaksi tetap tersimpan untuk dicoba lagi
-        alert("❌ Pembayaran gagal. Silakan coba lagi.");
-      },
-      onClose: function () {
-        console.log("Payment modal closed");
-        // User menutup modal, transaksi tetap tersimpan untuk dicoba lagi nanti
-      },
-    });
+    setSnapError(false);
+    setIsSnapOpen(true);
+
+    try {
+      // @ts-ignore
+      window.snap.pay(paymentData.token, {
+        onSuccess: function (result) {
+          console.log("Payment success:", result);
+          setIsSnapOpen(false);
+          setTimeout(() => {
+            onSuccess();
+          }, 2000);
+        },
+        onPending: function (result) {
+          console.log("Payment pending:", result);
+          setIsSnapOpen(false);
+          alert("🔄 Pembayaran pending. Silakan selesaikan pembayaran Anda.");
+        },
+        onError: function (result) {
+          console.log("Payment error:", result);
+          setIsSnapOpen(false);
+          alert("❌ Pembayaran gagal. Silakan coba lagi.");
+        },
+        onClose: function () {
+          console.log("Payment modal closed");
+          setIsSnapOpen(false);
+        },
+      });
+    } catch (error) {
+      console.error("Error opening Snap:", error);
+      setIsSnapOpen(false);
+      setSnapError(true);
+    }
   };
 
   const handleCancelTransaction = async () => {
@@ -103,38 +121,53 @@ export default function PaymentModal({
     // Reset state
     setSnapLoaded(false);
     setSnapError(false);
+    setIsSnapOpen(false);
 
     console.log("ISI MIDTRANS ENVIRONMENT", MIDTRANS_ENVIRONMENT);
+
+    // Hapus script sebelumnya jika ada
+    if (
+      snapScriptRef.current &&
+      document.body.contains(snapScriptRef.current)
+    ) {
+      document.body.removeChild(snapScriptRef.current);
+      snapScriptRef.current = null;
+    }
+
+    // Reset initialization flag
+    isSnapInitializedRef.current = false;
 
     // Tentukan Snap URL berdasarkan environment
     const snapUrl =
       MIDTRANS_ENVIRONMENT === "production"
-        ? "https://app.midtrans.com/snap/snap.js" // Production
-        : "https://app.sandbox.midtrans.com/snap/snap.js"; // Sandbox
+        ? "https://app.midtrans.com/snap/snap.js"
+        : "https://app.sandbox.midtrans.com/snap/snap.js";
 
     // GUNAKAN CLIENT KEY YANG BENAR - tidak perlu NEXT_PUBLIC prefix
     const clientKey =
       MIDTRANS_ENVIRONMENT === "production"
-        ? MIDTRANS_CLIENT_KEY_PRODUCTION // ← INI YANG BENAR
-        : MIDTRANS_CLIENT_KEY_SANDBOX; // ← INI YANG BENAR
+        ? MIDTRANS_CLIENT_KEY_PRODUCTION
+        : MIDTRANS_CLIENT_KEY_SANDBOX;
 
     console.log(`🔧 Loading Midtrans Snap from: ${snapUrl}`);
-    console.log(`🔧 Environment: ${MIDTRANS_ENVIRONMENT}`);
-    console.log(`🔧 Client Key: ${clientKey ? "✅ Loaded" : "❌ Missing"}`);
 
     // Load Midtrans Snap script
     const script = document.createElement("script");
     script.src = snapUrl;
     script.setAttribute("data-client-key", clientKey);
+    script.async = true;
 
     script.onload = () => {
       console.log("✅ Snap script loaded successfully");
-      console.log(`🔧 Environment: ${MIDTRANS_ENVIRONMENT}`);
       setSnapLoaded(true);
+      isSnapInitializedRef.current = true;
 
-      // Auto open Snap hanya jika bukan restored transaction
-      if (!isRestoredTransaction) {
-        openSnapPayment();
+      // Auto open Snap hanya jika bukan restored transaction DAN belum terbuka
+      if (!isRestoredTransaction && !isSnapOpen) {
+        // Beri sedikit delay untuk memastikan Snap benar-benar siap
+        setTimeout(() => {
+          openSnapPayment();
+        }, 500);
       }
     };
 
@@ -145,11 +178,18 @@ export default function PaymentModal({
     };
 
     document.body.appendChild(script);
+    snapScriptRef.current = script;
 
     return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
+      if (
+        snapScriptRef.current &&
+        document.body.contains(snapScriptRef.current)
+      ) {
+        document.body.removeChild(snapScriptRef.current);
+        snapScriptRef.current = null;
       }
+      isSnapInitializedRef.current = false;
+      setIsSnapOpen(false);
     };
   }, [isOpen, paymentData?.token, isRestoredTransaction]);
 
@@ -299,8 +339,12 @@ export default function PaymentModal({
         {/* Tombol Buka Snap - Tampil jika Snap sudah loaded */}
         {snapLoaded && !snapError && (
           <button
-            onClick={openSnapPayment}
-            disabled={isLoading || isCancelling}
+            onClick={() => {
+              if (!isSnapOpen) {
+                openSnapPayment();
+              }
+            }}
+            disabled={isLoading || isCancelling || isSnapOpen}
             className="w-full mb-3 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-medium cursor-pointer flex items-center justify-center space-x-2 shadow-lg"
           >
             <svg
@@ -317,7 +361,9 @@ export default function PaymentModal({
               />
             </svg>
             <span>
-              {isRestoredTransaction
+              {isSnapOpen
+                ? "Pembayaran Sedang Dibuka..."
+                : isRestoredTransaction
                 ? "Lanjutkan Pembayaran"
                 : "Buka Snap Pembayaran"}
             </span>
