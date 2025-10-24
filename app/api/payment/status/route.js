@@ -13,10 +13,21 @@ export async function GET(request) {
       );
     }
 
+    // Determine environment and keys
+    const isProduction = process.env.MIDTRANS_ENVIRONMENT === "production";
+    const serverKey = isProduction
+      ? process.env.MIDTRANS_SERVER_KEY_PRODUCTION
+      : process.env.MIDTRANS_SERVER_KEY_SANDBOX;
+
+    console.log(
+      `🔧 Midtrans Status Check - Environment: ${process.env.MIDTRANS_ENVIRONMENT}`
+    );
+    console.log(`🔧 Order ID: ${orderId}`);
+
     // Initialize Snap client
     let snap = new midtransClient.Snap({
-      isProduction: process.env.MIDTRANS_ENVIRONMENT === "production",
-      serverKey: process.env.MIDTRANS_SERVER_KEY,
+      isProduction: isProduction,
+      serverKey: serverKey,
     });
 
     // Check transaction status
@@ -25,6 +36,7 @@ export async function GET(request) {
     console.log("📊 Payment status check:", {
       orderId: orderId,
       status: statusResponse.transaction_status,
+      environment: process.env.MIDTRANS_ENVIRONMENT,
     });
 
     return NextResponse.json({
@@ -33,13 +45,20 @@ export async function GET(request) {
       orderId: orderId,
       paymentType: statusResponse.payment_type,
       settlementTime: statusResponse.settlement_time,
+      environment: process.env.MIDTRANS_ENVIRONMENT,
+      // Include additional useful fields
+      fraudStatus: statusResponse.fraud_status,
+      grossAmount: statusResponse.gross_amount,
+      currency: statusResponse.currency,
     });
   } catch (error) {
     console.error("Payment status check error:", error);
+    console.error("Environment:", process.env.MIDTRANS_ENVIRONMENT);
     return NextResponse.json(
       {
         success: false,
         error: error.message,
+        environment: process.env.MIDTRANS_ENVIRONMENT,
       },
       { status: 500 }
     );

@@ -421,7 +421,7 @@ const PageSelector = ({
         </div>
 
         {/* Cost Summary */}
-        <div className="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
+        {/* <div className="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="text-lg font-bold text-gray-800">
@@ -440,7 +440,7 @@ const PageSelector = ({
               </span>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
