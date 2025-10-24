@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const MIDTRANS_ENVIRONMENT = "sandbox";
+const MIDTRANS_ENVIRONMENT = "production";
 const MIDTRANS_CLIENT_KEY_SANDBOX = "Mid-client-wPXTxafwqLeUkNQD";
 const MIDTRANS_CLIENT_KEY_PRODUCTION = "Mid-client-S7IFqCPzEbOVyOrF";
 
