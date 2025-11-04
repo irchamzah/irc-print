@@ -524,8 +524,6 @@ export const usePaymentManagement = (
             `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`
         );
 
-        await refreshAllData();
-
         setTimeout(() => {
           window.location.reload();
         }, 2000);
