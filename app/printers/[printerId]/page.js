@@ -126,6 +126,7 @@ export default function PrinterPage() {
                 advancedSettings={advancedSettings}
                 onSubmit={handleSubmit}
                 isPrinterOffline={isPrinterOffline}
+                userSession={userSession}
               />
             </form>
           </div>

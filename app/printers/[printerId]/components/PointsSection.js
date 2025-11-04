@@ -31,11 +31,11 @@ export const PointsSection = ({
   };
 
   const handleCheckPoints = () => {
-    // Gunakan localPhoneNumber untuk check points
+    // Gunakan localPhoneNumber untuk Logins
     if (onCheckPoints && onPhoneNumberChange) {
       // Update parent state dulu
       onPhoneNumberChange(localPhoneNumber);
-      // Lalu check points
+      // Lalu Logins
       setTimeout(() => onCheckPoints(), 100);
     } else if (onCheckPoints) {
       onCheckPoints();
@@ -59,13 +59,13 @@ export const PointsSection = ({
               d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
             />
           </svg>
-          Point Reward
+          Login
         </h3>
 
         <div className="space-y-4 sm:space-y-5">
           <div>
             <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3">
-              Nomor HP untuk Cek Poin
+              Isi Nomor HP untuk Login
             </label>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <input
@@ -84,13 +84,10 @@ export const PointsSection = ({
                 {checkingPoints ? (
                   <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
                 ) : (
-                  "Check Point"
+                  "Login"
                 )}
               </button>
             </div>
-            <p className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3">
-              Masukkan nomor HP untuk melihat dan mendapatkan poin
-            </p>
           </div>
         </div>
       </div>
@@ -113,7 +110,7 @@ export const PointsSection = ({
             d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
           />
         </svg>
-        Point Reward
+        Login
       </h3>
 
       <div className="space-y-4 sm:space-y-5">
