@@ -1,7 +1,6 @@
 // utils/pdfUtils.js
 import * as pdfjsLib from "pdfjs-dist";
 
-// Gunakan worker yang sama dengan PDFPreview
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
 
 export async function getPDFPageCount(file) {

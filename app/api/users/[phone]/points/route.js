@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 
-// GUNAKAN HTTP, BUKAN HTTPS
 const VPS_API_URL = process.env.VPS_API_URL;
 
 export async function GET(request, { params }) {
   try {
     const { phone } = await params;
 
-    // Tambahkan timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -18,7 +16,7 @@ export async function GET(request, { params }) {
         headers: {
           "Content-Type": "application/json",
         },
-        signal: controller.signal, // ← Gunakan signal untuk timeout
+        signal: controller.signal,
       }
     );
 
@@ -32,7 +30,6 @@ export async function GET(request, { params }) {
 
       if (result.success) {
         if (result.user) {
-          // User ditemukan
           return NextResponse.json({
             success: true,
             points: result.points || 0,
