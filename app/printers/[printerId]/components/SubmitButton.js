@@ -3,7 +3,10 @@ export const SubmitButton = ({
   advancedSettings,
   onSubmit,
   isPrinterOffline = false,
-  userSession = null, // ✅ TAMBAH INI
+  userSession = null,
+  isPaperInsufficient = false, // ✅ TAMBAH INI
+  availablePaper = 0, // ✅ TAMBAH INI
+  totalPagesNeeded = 0, // ✅ TAMBAH INI
 }) => {
   if (!advancedSettings.cost || advancedSettings.cost <= 0) {
     return null;
@@ -26,6 +29,18 @@ export const SubmitButton = ({
         </div>
       )}
 
+      {/* ✅ Warning untuk Kertas Tidak Cukup */}
+      {isPaperInsufficient && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+          <p className="text-orange-700 text-sm font-medium">
+            ⚠️ Kertas tidak cukup
+          </p>
+          <p className="text-orange-600 text-xs mt-1">
+            Butuh {totalPagesNeeded} halaman, tersedia {availablePaper} halaman
+          </p>
+        </div>
+      )}
+
       {/* ✅ Warning untuk User Belum Login */}
       {isUserNotLoggedIn && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
@@ -41,10 +56,15 @@ export const SubmitButton = ({
 
       <button
         type="submit"
-        disabled={isLoading || isPrinterOffline || isUserNotLoggedIn} // ✅ TAMBAH isUserNotLoggedIn
+        disabled={
+          isLoading ||
+          isPrinterOffline ||
+          isUserNotLoggedIn ||
+          isPaperInsufficient
+        } // ✅ TAMBAH isPaperInsufficient
         onClick={onSubmit}
         className={`w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed text-lg ${
-          isPrinterOffline || isUserNotLoggedIn
+          isPrinterOffline || isUserNotLoggedIn || isPaperInsufficient
             ? "opacity-60"
             : "cursor-pointer"
         }`}
@@ -59,7 +79,12 @@ export const SubmitButton = ({
             <span className="mr-2">🚫</span>
             Printer Offline
           </div>
-        ) : isUserNotLoggedIn ? ( // ✅ TAMBAH CONDITION INI
+        ) : isPaperInsufficient ? ( // ✅ TAMBAH CONDITION INI
+          <div className="flex items-center justify-center">
+            <span className="mr-2">📄</span>
+            Kertas Tidak Cukup
+          </div>
+        ) : isUserNotLoggedIn ? (
           <div className="flex items-center justify-center">
             <span className="mr-2">🔐</span>
             Harus Login

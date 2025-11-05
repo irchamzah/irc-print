@@ -11,6 +11,7 @@ export const PendingTransactionsSection = ({
   onCancel,
   isLoading,
   isPrinterOffline = false,
+  isPaperInsufficient = false, // ✅ TAMBAH INI
 }) => {
   // Hanya tampilkan jika user login dan ada transaksi atau sedang loading
   if (
@@ -120,6 +121,7 @@ export const PendingTransactionsSection = ({
               isLoading={isLoading}
               cooldownTimers={cooldownTimers}
               isPrinterOffline={isPrinterOffline}
+              isPaperInsufficient={isPaperInsufficient}
             />
           ))}
         </div>

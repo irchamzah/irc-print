@@ -42,6 +42,9 @@ export default function PrinterPage() {
     cooldownTimers,
     isRefreshing,
     isPrinterOffline,
+    isPaperInsufficient,
+    availablePaper,
+    totalPagesNeeded,
 
     // Setters
     setPhoneNumber,
@@ -114,6 +117,7 @@ export default function PrinterPage() {
                 onCancel={handleCancelPendingTransaction}
                 isLoading={isLoading}
                 isPrinterOffline={isPrinterOffline}
+                isPaperInsufficient={isPaperInsufficient} // ✅ TAMBAH INI
               />
 
               <TotalCostSection
@@ -127,6 +131,9 @@ export default function PrinterPage() {
                 onSubmit={handleSubmit}
                 isPrinterOffline={isPrinterOffline}
                 userSession={userSession}
+                isPaperInsufficient={isPaperInsufficient} // ✅ TAMBAH INI
+                availablePaper={availablePaper} // ✅ TAMBAH INI
+                totalPagesNeeded={totalPagesNeeded} // ✅ TAMBAH INI
               />
             </form>
           </div>

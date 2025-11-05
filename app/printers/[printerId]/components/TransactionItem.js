@@ -5,6 +5,7 @@ export const TransactionItem = ({
   isLoading,
   cooldownTimers,
   isPrinterOffline = false,
+  isPaperInsufficient = false, // ✅ TAMBAH INI
 }) => {
   const getStatusBadge = (status) => {
     switch (status) {
@@ -85,6 +86,7 @@ export const TransactionItem = ({
               isLoading={isLoading}
               cooldownTimers={cooldownTimers}
               isPrinterOffline={isPrinterOffline}
+              isPaperInsufficient={isPaperInsufficient} // ✅ TAMBAH INI
             />
           ) : transaction.status === "pending" ? (
             <PendingButtons
@@ -94,6 +96,7 @@ export const TransactionItem = ({
               isLoading={isLoading}
               cooldownTimers={cooldownTimers}
               isPrinterOffline={isPrinterOffline}
+              isPaperInsufficient={isPaperInsufficient} // ✅ TAMBAH INI
             />
           ) : (
             <CancelButton onCancel={onCancel} transaction={transaction} />
@@ -110,14 +113,18 @@ const SettlementButton = ({
   isLoading,
   cooldownTimers,
   isPrinterOffline,
+  isPaperInsufficient, // ✅ TAMBAH INI
 }) => (
   <button
     onClick={() => onContinue(transaction)}
     disabled={
-      isLoading || cooldownTimers[transaction.orderId] || isPrinterOffline
+      isLoading ||
+      cooldownTimers[transaction.orderId] ||
+      isPrinterOffline ||
+      isPaperInsufficient // ✅ TAMBAH isPaperInsufficient
     }
     className={`w-full sm:w-auto px-4 py-2.5 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-      isPrinterOffline
+      isPrinterOffline || isPaperInsufficient
         ? "bg-gray-400 cursor-not-allowed opacity-75"
         : "bg-green-600 hover:bg-green-700 disabled:bg-green-300 shadow-sm hover:shadow-md"
     }`}
@@ -143,7 +150,9 @@ const SettlementButton = ({
           />
         </svg>
         <span className="whitespace-nowrap">
-          {isPrinterOffline ? "Printer Offline" : "Print Sekarang"}
+          {isPrinterOffline || isPaperInsufficient
+            ? "Tidak Dapat Print"
+            : "Print Sekarang"}
         </span>
       </>
     )}
@@ -157,17 +166,21 @@ const PendingButtons = ({
   isLoading,
   cooldownTimers,
   isPrinterOffline,
+  isPaperInsufficient, // ✅ TAMBAH INI
 }) => (
   <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
     {/* Continue Button */}
     <button
       onClick={() => onContinue(transaction)}
       disabled={
-        isLoading || cooldownTimers[transaction.orderId] || isPrinterOffline
+        isLoading ||
+        cooldownTimers[transaction.orderId] ||
+        isPrinterOffline ||
+        isPaperInsufficient // ✅ TAMBAH isPaperInsufficient
       }
       type="button"
       className={`w-full sm:flex-1 px-4 py-2.5 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-        isPrinterOffline
+        isPrinterOffline || isPaperInsufficient
           ? "bg-gray-400 cursor-not-allowed opacity-75"
           : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 shadow-sm hover:shadow-md cursor-pointer"
       }`}
@@ -193,7 +206,11 @@ const PendingButtons = ({
             />
           </svg>
           <span className="whitespace-nowrap">
-            {isPrinterOffline ? "Printer Offline" : "Lanjutkan Bayar"}
+            {isPrinterOffline
+              ? "Printer Sedang Offline"
+              : isPaperInsufficient
+              ? "Kertas Tidak Cukup"
+              : "Lanjutkan Bayar"}
           </span>
         </>
       )}
@@ -224,6 +241,7 @@ const PendingButtons = ({
   </div>
 );
 
+// CancelButton tetap sama
 const CancelButton = ({ onCancel, transaction }) => (
   <button
     onClick={() => onCancel(transaction)}

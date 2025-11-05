@@ -60,7 +60,7 @@ export const useUserManagement = () => {
           localStorage.setItem("userSession", JSON.stringify(userData));
 
           alert(
-            `✅ Point berhasil dicek! Anda memiliki ${result.points.toFixed(
+            `✅ Berhasil login! Anda memiliki ${result.points.toFixed(
               2
             )} point.`
           );
@@ -68,7 +68,7 @@ export const useUserManagement = () => {
           await createNewUserDirect(cleanPhone);
         }
       } else {
-        throw new Error(result.error || "Gagal memeriksa poin");
+        throw new Error(result.error || "Gagal Login");
       }
     } catch (error) {
       console.error("❌ Error checking points:", error);

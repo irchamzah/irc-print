@@ -10,6 +10,9 @@ export const usePrinterPage = () => {
   const printerId = params.printerId;
   const [printer, setPrinter] = useState(null);
   const [isPrinterOffline, setIsPrinterOffline] = useState(false);
+  const [isPaperInsufficient, setIsPaperInsufficient] = useState(false); // ✅ TAMBAH STATE BARU
+  const [availablePaper, setAvailablePaper] = useState(0); // ✅ TAMBAH STATE BARU
+  const [totalPagesNeeded, setTotalPagesNeeded] = useState(0); // ✅ TAMBAH STATE BARU
 
   // Initialize all custom hooks
   const userManagement = useUserManagement();
@@ -60,6 +63,16 @@ export const usePrinterPage = () => {
     }
   }, [printer]);
 
+  // ✅ EFFECT BARU: Validasi kertas setiap kali ada perubahan
+  useEffect(() => {
+    checkPaperAvailability();
+  }, [
+    printer,
+    fileManagement.advancedSettings,
+    fileManagement.totalPages,
+    paymentManagement.pendingTransactions,
+  ]);
+
   // Functions
   const fetchPrinterDetails = async () => {
     try {
@@ -76,6 +89,50 @@ export const usePrinterPage = () => {
     }
   };
 
+  // ✅ FUNCTION BARU: Validasi ketersediaan kertas
+  const checkPaperAvailability = () => {
+    if (!printer) return;
+
+    const availablePaperCount = printer.paperStatus?.paperCount || 0;
+    setAvailablePaper(availablePaperCount);
+
+    // Hitung total halaman yang akan diprint
+    let totalNeeded = 0;
+
+    // 1. Hitung dari current transaction (jika ada file)
+    if (fileManagement.file && fileManagement.totalPages > 0) {
+      const currentPages =
+        (fileManagement.advancedSettings.colorPages.length +
+          fileManagement.advancedSettings.bwPages.length) *
+        fileManagement.advancedSettings.copies;
+      totalNeeded += currentPages;
+    }
+
+    // 2. Hitung dari pending transactions yang belum settlement
+    if (paymentManagement.pendingTransactions.length > 0) {
+      const pendingPages = paymentManagement.pendingTransactions
+        .filter((tx) => tx.status === "pending" || tx.status === "settlement")
+        .reduce((total, tx) => {
+          const txPages =
+            (tx.settings?.colorPages?.length || 0) +
+            (tx.settings?.bwPages?.length || 0);
+          const txCopies = tx.settings?.copies || 1;
+          return total + txPages * txCopies;
+        }, 0);
+      totalNeeded += pendingPages;
+    }
+
+    setTotalPagesNeeded(totalNeeded);
+
+    // Cek apakah kertas cukup
+    const isInsufficient = totalNeeded > availablePaperCount;
+    setIsPaperInsufficient(isInsufficient);
+
+    console.log(
+      `📊 Paper Check: Need ${totalNeeded} pages, Available ${availablePaperCount} pages, Insufficient: ${isInsufficient}`
+    );
+  };
+
   // Combined handleFileUpload with isLoading
   const handleFileUpload = async (selectedFile) => {
     return fileManagement.handleFileUpload(
@@ -84,7 +141,7 @@ export const usePrinterPage = () => {
     );
   };
 
-  // Combined handleSubmit with refresh
+  // Combined handleSubmit with refresh - TAMBAH VALIDASI KERTAS
   const handleSubmit = async (e) => {
     // ✅ TAMBAH VALIDASI USER SESSION
     if (!userManagement.userSession?.phone) {
@@ -96,6 +153,14 @@ export const usePrinterPage = () => {
 
     if (isPrinterOffline) {
       alert("❌ Printer sedang offline. Tidak dapat melakukan print saat ini.");
+      return;
+    }
+
+    // ✅ TAMBAH VALIDASI KERTAS
+    if (isPaperInsufficient) {
+      alert(
+        `❌ Kertas tidak cukup! Butuh ${totalPagesNeeded} halaman, tersedia ${availablePaper} halaman.`
+      );
       return;
     }
 
@@ -127,7 +192,16 @@ export const usePrinterPage = () => {
     return paymentManagement.handlePaymentCancelled(refreshData.refreshAllData);
   };
 
+  // TAMBAH VALIDASI KERTAS di continuePendingTransaction
   const handleContinuePendingTransaction = async (transaction) => {
+    // ✅ TAMBAH VALIDASI KERTAS
+    if (isPaperInsufficient) {
+      alert(
+        `❌ Kertas tidak cukup! Butuh ${totalPagesNeeded} halaman, tersedia ${availablePaper} halaman.`
+      );
+      return;
+    }
+
     return paymentManagement.continuePendingTransaction(
       transaction,
       userManagement.userSession
@@ -146,6 +220,9 @@ export const usePrinterPage = () => {
     // States from all hooks
     printer,
     isPrinterOffline,
+    isPaperInsufficient, // ✅ TAMBAH INI
+    availablePaper, // ✅ TAMBAH INI
+    totalPagesNeeded, // ✅ TAMBAH INI
     ...userManagement,
     ...fileManagement,
     ...paymentManagement,
