@@ -113,76 +113,34 @@ const SettlementButton = ({
   isLoading,
   cooldownTimers,
   isPrinterOffline,
-  isPaperInsufficient, // ✅ TAMBAH INI
-}) => (
-  <button
-    onClick={() => onContinue(transaction)}
-    disabled={
-      isLoading ||
-      cooldownTimers[transaction.orderId] ||
-      isPrinterOffline ||
-      isPaperInsufficient // ✅ TAMBAH isPaperInsufficient
-    }
-    className={`w-full sm:w-auto px-4 py-2.5 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-      isPrinterOffline || isPaperInsufficient
-        ? "bg-gray-400 cursor-not-allowed opacity-75"
-        : "bg-green-600 hover:bg-green-700 disabled:bg-green-300 shadow-sm hover:shadow-md"
-    }`}
-  >
-    {cooldownTimers[transaction.orderId] ? (
-      <>
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-        <span>Loading...</span>
-      </>
-    ) : (
-      <>
-        <svg
-          className="w-4 h-4 flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-        <span className="whitespace-nowrap">
-          {isPrinterOffline || isPaperInsufficient
-            ? "Tidak Dapat Print"
-            : "Print Sekarang"}
-        </span>
-      </>
-    )}
-  </button>
-);
+  isPaperInsufficient,
+}) => {
+  // ✅ FUNCTION BARU: Handle print dengan warning
+  const handlePrintWithWarning = () => {
+    const confirmationMessage =
+      "🚨 PERINGATAN!!!\n\n" +
+      "PRINTER AKAN MULAI MENCETAK SEKARANG!\n" +
+      "HARAP KERTAS SEGERA DIAMBIL!\n\n" +
+      "Apakah Anda yakin ingin melanjutkan print?";
 
-const PendingButtons = ({
-  transaction,
-  onContinue,
-  onCancel,
-  isLoading,
-  cooldownTimers,
-  isPrinterOffline,
-  isPaperInsufficient, // ✅ TAMBAH INI
-}) => (
-  <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
-    {/* Continue Button */}
+    if (window.confirm(confirmationMessage)) {
+      onContinue(transaction);
+    }
+  };
+
+  return (
     <button
-      onClick={() => onContinue(transaction)}
+      onClick={handlePrintWithWarning} // ✅ GUNAKAN FUNCTION BARU
       disabled={
         isLoading ||
         cooldownTimers[transaction.orderId] ||
         isPrinterOffline ||
-        isPaperInsufficient // ✅ TAMBAH isPaperInsufficient
+        isPaperInsufficient
       }
-      type="button"
-      className={`w-full sm:flex-1 px-4 py-2.5 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+      className={`w-full sm:w-auto px-4 py-2.5 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
         isPrinterOffline || isPaperInsufficient
           ? "bg-gray-400 cursor-not-allowed opacity-75"
-          : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 shadow-sm hover:shadow-md cursor-pointer"
+          : "bg-green-600 hover:bg-green-700 disabled:bg-green-300 shadow-sm hover:shadow-md"
       }`}
     >
       {cooldownTimers[transaction.orderId] ? (
@@ -202,44 +160,116 @@ const PendingButtons = ({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              d="M5 13l4 4L19 7"
             />
           </svg>
           <span className="whitespace-nowrap">
-            {isPrinterOffline
-              ? "Printer Sedang Offline"
-              : isPaperInsufficient
-              ? "Kertas Tidak Cukup"
-              : "Lanjutkan Bayar"}
+            {isPrinterOffline || isPaperInsufficient
+              ? "Tidak Dapat Print"
+              : "Print Sekarang"}
           </span>
         </>
       )}
     </button>
+  );
+};
 
-    {/* Cancel Button */}
-    <button
-      onClick={() => onCancel(transaction)}
-      disabled={isLoading}
-      type="button"
-      className="w-full sm:flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-red-300 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer"
-    >
-      <svg
-        className="w-4 h-4 flex-shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
+const PendingButtons = ({
+  transaction,
+  onContinue,
+  onCancel,
+  isLoading,
+  cooldownTimers,
+  isPrinterOffline,
+  isPaperInsufficient,
+}) => {
+  // ✅ FUNCTION BARU: Handle continue dengan warning
+  const handleContinueWithWarning = () => {
+    const confirmationMessage =
+      "🚨 PERINGATAN!!!\n\n" +
+      "SETELAH MEMBAYAR, PRINTER AKAN MULAI MENCETAK!\n" +
+      "HARAP KERTAS SEGERA DIAMBIL!\n\n" +
+      "Apakah Anda yakin ingin melanjutkan pembayaran?";
+
+    if (window.confirm(confirmationMessage)) {
+      onContinue(transaction);
+    }
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
+      {/* Continue Button */}
+      <button
+        onClick={handleContinueWithWarning} // ✅ GUNAKAN FUNCTION BARU
+        disabled={
+          isLoading ||
+          cooldownTimers[transaction.orderId] ||
+          isPrinterOffline ||
+          isPaperInsufficient
+        }
+        type="button"
+        className={`w-full sm:flex-1 px-4 py-2.5 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+          isPrinterOffline || isPaperInsufficient
+            ? "bg-gray-400 cursor-not-allowed opacity-75"
+            : "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 shadow-sm hover:shadow-md cursor-pointer"
+        }`}
       >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M6 18L18 6M6 6l12 12"
-        />
-      </svg>
-      <span className="whitespace-nowrap">Batalkan</span>
-    </button>
-  </div>
-);
+        {cooldownTimers[transaction.orderId] ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            <span>Loading...</span>
+          </>
+        ) : (
+          <>
+            <svg
+              className="w-4 h-4 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              />
+            </svg>
+            <span className="whitespace-nowrap">
+              {isPrinterOffline
+                ? "Printer Sedang Offline"
+                : isPaperInsufficient
+                ? "Kertas Tidak Cukup"
+                : "Lanjutkan Bayar"}
+            </span>
+          </>
+        )}
+      </button>
+
+      {/* Cancel Button */}
+      <button
+        onClick={() => onCancel(transaction)}
+        disabled={isLoading}
+        type="button"
+        className="w-full sm:flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-red-300 transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer"
+      >
+        <svg
+          className="w-4 h-4 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+        <span className="whitespace-nowrap">Batalkan</span>
+      </button>
+    </div>
+  );
+};
 
 // CancelButton tetap sama
 const CancelButton = ({ onCancel, transaction }) => (

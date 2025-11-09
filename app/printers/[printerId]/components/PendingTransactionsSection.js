@@ -11,7 +11,7 @@ export const PendingTransactionsSection = ({
   onCancel,
   isLoading,
   isPrinterOffline = false,
-  isPaperInsufficient = false, // ✅ TAMBAH INI
+  isPaperInsufficient = false,
 }) => {
   // Hanya tampilkan jika user login dan ada transaksi atau sedang loading
   if (
@@ -102,6 +102,33 @@ export const PendingTransactionsSection = ({
         </div>
       )}
 
+      {/* ✅ PERINGATAN GLOBAL UNTUK SEMUA TRANSACTION */}
+      {/* {!isPrinterOffline && !isPaperInsufficient && (
+        <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 mb-4">
+          <div className="flex items-start gap-2">
+            <svg
+              className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>
+              <p className="text-red-700 text-sm font-bold">
+                PERINGATAN: Printer akan langsung mencetak setelah pembayaran!
+              </p>
+              <p className="text-red-600 text-xs mt-1">
+                Harap siap mengambil kertas dari printer
+              </p>
+            </div>
+          </div>
+        </div>
+      )} */}
+
       {/* Loading State */}
       {loadingTransactions && (
         <div className="flex justify-center py-4">
@@ -143,23 +170,39 @@ export const PendingTransactionsSection = ({
 };
 
 const EmptyTransactionsState = () => (
-  <div className="text-center py-6">
-    <svg
-      className="w-12 h-12 text-purple-300 mx-auto mb-3"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-    <p className="text-purple-600 font-medium">Tidak ada transaksi tertunda</p>
-    <p className="text-purple-500 text-sm mt-1">
-      Semua transaksi sudah selesai atau dibatalkan
-    </p>
+  <div className="text-center py-8">
+    <div className="flex flex-col items-center justify-center">
+      {/* Icon */}
+      <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+        <svg
+          className="w-8 h-8 text-purple-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </div>
+
+      {/* Text */}
+      <h4 className="text-lg font-semibold text-gray-700 mb-2">
+        Tidak ada transaksi tertunda
+      </h4>
+      <p className="text-gray-500 text-sm max-w-xs mx-auto">
+        Semua transaksi Anda sudah selesai atau belum ada transaksi yang dibuat
+      </p>
+
+      {/* Additional Info */}
+      <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
+        <p className="text-purple-700 text-xs">
+          💡 Transaksi akan muncul di sini jika pembayaran belum selesai
+        </p>
+      </div>
+    </div>
   </div>
 );
