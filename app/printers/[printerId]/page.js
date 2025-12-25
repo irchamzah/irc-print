@@ -9,6 +9,7 @@ import { SubmitButton } from "./components/SubmitButton";
 import { LoadingSpinner, FullPageLoader } from "./components/LoadingSpinner";
 import dynamic from "next/dynamic";
 import PaymentModal from "@/app/printers/[printerId]/components/PaymentModal";
+// HAPUS: import { useFileManagement } from "./hooks/useFileManagement"; // ❌ TIDAK PERLU
 
 const PageSelector = dynamic(
   () => import("@/app/printers/[printerId]/components/PageSelector"),
@@ -51,7 +52,7 @@ export default function PrinterPage() {
 
     // Functions
     handleFileUpload,
-    handleSettingsChange,
+    handleSettingsChange, // ✅ Ini sudah termasuk dari fileManagement
     handleSubmit,
     handlePaymentSuccess,
     handlePaymentCancelled,
@@ -87,7 +88,7 @@ export default function PrinterPage() {
                   <PageSelector
                     totalPages={totalPages}
                     initialSettings={advancedSettings}
-                    onSettingsChange={handleSettingsChange}
+                    onSettingsChange={handleSettingsChange} // ✅ Gunakan yang dari usePrinterPage
                     file={file}
                   />
                 </div>
@@ -117,7 +118,7 @@ export default function PrinterPage() {
                 onCancel={handleCancelPendingTransaction}
                 isLoading={isLoading}
                 isPrinterOffline={isPrinterOffline}
-                isPaperInsufficient={isPaperInsufficient} // ✅ TAMBAH INI
+                isPaperInsufficient={isPaperInsufficient}
               />
 
               <TotalCostSection
@@ -131,9 +132,9 @@ export default function PrinterPage() {
                 onSubmit={handleSubmit}
                 isPrinterOffline={isPrinterOffline}
                 userSession={userSession}
-                isPaperInsufficient={isPaperInsufficient} // ✅ TAMBAH INI
-                availablePaper={availablePaper} // ✅ TAMBAH INI
-                totalPagesNeeded={totalPagesNeeded} // ✅ TAMBAH INI
+                isPaperInsufficient={isPaperInsufficient}
+                availablePaper={availablePaper}
+                totalPagesNeeded={totalPagesNeeded}
               />
             </form>
           </div>

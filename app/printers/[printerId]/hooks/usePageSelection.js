@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { PRINT_SETTINGS } from "../../../../lib/printConstants";
+import { PRINT_SETTINGS } from "@/lib/printConstants";
+import { useEffect, useState } from "react";
 
 export const usePageSelection = (
   totalPages,
@@ -7,6 +7,7 @@ export const usePageSelection = (
   onSettingsChange
 ) => {
   const [selections, setSelections] = useState([]);
+  const [selectedPages, setSelectedPages] = useState([]);
   const [visiblePages, setVisiblePages] = useState(6);
   const [renderErrors, setRenderErrors] = useState({});
   const [printSettings, setPrintSettings] = useState(
@@ -28,8 +29,10 @@ export const usePageSelection = (
         : initialSettings?.bwPages?.includes(i + 1)
         ? "bw"
         : "bw",
+      selected: true,
     }));
     setSelections(initialSelections);
+    setSelectedPages(Array.from({ length: totalPages }, (_, i) => i + 1));
 
     if (initialSelections.length > 0) {
       const initialCost = calculateCostWithSettings(
@@ -46,10 +49,102 @@ export const usePageSelection = (
     }
   }, [totalPages]);
 
-  // Calculate cost based on selections and settings
+  const handlePageSelection = (pageNumber, isSelected) => {
+    const newSelections = selections.map((sel) =>
+      sel.page === pageNumber ? { ...sel, selected: isSelected } : sel
+    );
+    setSelections(newSelections);
+
+    const updatedSelectedPages = newSelections
+      .filter((sel) => sel.selected)
+      .map((sel) => sel.page);
+    setSelectedPages(updatedSelectedPages);
+
+    // Hitung ulang cost hanya untuk halaman yang terpilih
+    const cost = calculateCostWithSettings(
+      newSelections.filter((sel) => sel.selected),
+      initialSettings.copies || 1,
+      printSettings
+    );
+
+    // Notify parent hanya dengan halaman yang terpilih
+    const selectedColorPages = newSelections
+      .filter((sel) => sel.selected && sel.type === "color")
+      .map((sel) => sel.page);
+    const selectedBwPages = newSelections
+      .filter((sel) => sel.selected && sel.type === "bw")
+      .map((sel) => sel.page);
+
+    onSettingsChange({
+      colorPages: selectedColorPages,
+      bwPages: selectedBwPages,
+      copies: initialSettings.copies || 1,
+      printSettings,
+      cost,
+      selectedPages: updatedSelectedPages,
+    });
+  };
+
+  // Fungsi untuk select/deselect semua - DIPERBAIKI
+  const selectAllPages = () => {
+    const newSelections = selections.map((sel) => ({ ...sel, selected: true }));
+    setSelections(newSelections);
+    setSelectedPages(Array.from({ length: totalPages }, (_, i) => i + 1));
+
+    const cost = calculateCostWithSettings(
+      newSelections.filter((sel) => sel.selected),
+      initialSettings.copies || 1,
+      printSettings
+    );
+
+    const selectedColorPages = newSelections
+      .filter((sel) => sel.selected && sel.type === "color")
+      .map((sel) => sel.page);
+    const selectedBwPages = newSelections
+      .filter((sel) => sel.selected && sel.type === "bw")
+      .map((sel) => sel.page);
+
+    onSettingsChange({
+      colorPages: selectedColorPages,
+      bwPages: selectedBwPages,
+      copies: initialSettings.copies || 1,
+      printSettings,
+      cost,
+      selectedPages: Array.from({ length: totalPages }, (_, i) => i + 1),
+    });
+  };
+
+  const deselectAllPages = () => {
+    const newSelections = selections.map((sel) => ({
+      ...sel,
+      selected: false,
+    }));
+    setSelections(newSelections);
+    setSelectedPages([]);
+
+    const cost = calculateCostWithSettings(
+      newSelections.filter((sel) => sel.selected),
+      initialSettings.copies || 1,
+      printSettings
+    );
+
+    onSettingsChange({
+      colorPages: [],
+      bwPages: [],
+      copies: initialSettings.copies || 1,
+      printSettings,
+      cost: 0,
+      selectedPages: [],
+    });
+  };
+
+  // Calculate cost based on selections and settings - DIPERBAIKI
   const calculateCostWithSettings = (selections, copies, settings) => {
-    const colorPages = selections.filter((s) => s.type === "color").length;
-    const bwPages = selections.filter((s) => s.type === "bw").length;
+    const selectedSelections = selections.filter((sel) => sel.selected); // Filter hanya yang selected
+    const colorPages = selectedSelections.filter(
+      (s) => s.type === "color"
+    ).length;
+    const bwPages = selectedSelections.filter((s) => s.type === "bw").length;
 
     const paperSize = settings.paperSize || "A4";
     const quality = settings.quality || "NORMAL";
@@ -65,14 +160,17 @@ export const usePageSelection = (
     return (totalColorCost + totalBwCost) * copies;
   };
 
-  // Notify parent component about settings changes
+  // Notify parent component about settings changes - DIPERBAIKI
   const notifyParent = (selections, copies, settings, cost) => {
-    const colorPages = selections
+    const selectedSelections = selections.filter((sel) => sel.selected);
+    const colorPages = selectedSelections
       .filter((s) => s.type === "color")
       .map((s) => s.page);
-    const bwPages = selections
+    const bwPages = selectedSelections
       .filter((s) => s.type === "bw")
       .map((s) => s.page);
+
+    const selectedPages = selectedSelections.map((s) => s.page);
 
     onSettingsChange({
       colorPages,
@@ -80,21 +178,24 @@ export const usePageSelection = (
       copies,
       printSettings: settings,
       cost,
+      selectedPages, // ✅ Tambah ini
     });
   };
 
-  // Handle page type change
+  // Handle page type change - PERLU DIPERBAIKI JUGA
   const handlePageTypeChange = (pageNumber, type) => {
     const newSelections = selections.map((sel) =>
       sel.page === pageNumber ? { ...sel, type } : sel
     );
     setSelections(newSelections);
 
+    const selectedSelections = newSelections.filter((sel) => sel.selected);
     const cost = calculateCostWithSettings(
-      newSelections,
+      selectedSelections,
       initialSettings.copies || 1,
       printSettings
     );
+
     notifyParent(
       newSelections,
       initialSettings.copies || 1,
@@ -103,7 +204,7 @@ export const usePageSelection = (
     );
   };
 
-  // Set all pages to same type
+  // Set all pages to same type - PERLU DIPERBAIKI JUGA
   const setAllPages = (type) => {
     const newSelections = selections.map((sel) => ({
       ...sel,
@@ -112,11 +213,13 @@ export const usePageSelection = (
 
     setSelections(newSelections);
 
+    const selectedSelections = newSelections.filter((sel) => sel.selected);
     const cost = calculateCostWithSettings(
-      newSelections,
+      selectedSelections,
       initialSettings.copies || 1,
       printSettings
     );
+
     notifyParent(
       newSelections,
       initialSettings.copies || 1,
@@ -135,16 +238,18 @@ export const usePageSelection = (
     setVisiblePages((prev) => Math.min(prev + 20, totalPages));
   };
 
-  // Handle print settings changes
+  // Handle print settings changes - PERLU DIPERBAIKI JUGA
   const handlePrintSettingsChange = (newSettings) => {
     const updatedSettings = { ...printSettings, ...newSettings };
     setPrintSettings(updatedSettings);
 
+    const selectedSelections = selections.filter((sel) => sel.selected);
     const cost = calculateCostWithSettings(
-      selections,
+      selectedSelections,
       initialSettings.copies || 1,
       updatedSettings
     );
+
     notifyParent(
       selections,
       initialSettings.copies || 1,
@@ -153,21 +258,23 @@ export const usePageSelection = (
     );
   };
 
-  // Handle copies change
+  // Handle copies change - PERLU DIPERBAIKI JUGA
   const handleCopiesChange = (copies) => {
     const validatedCopies = Math.max(1, Math.min(50, copies || 1));
 
+    const selectedSelections = selections.filter((sel) => sel.selected);
     const cost = calculateCostWithSettings(
-      selections,
+      selectedSelections,
       validatedCopies,
       printSettings
     );
+
     notifyParent(selections, validatedCopies, printSettings, cost);
   };
 
-  // Get current cost
+  // Get current cost - PERLU DIPERBAIKI JUGA
   const currentCost = calculateCostWithSettings(
-    selections,
+    selections.filter((sel) => sel.selected),
     initialSettings.copies || 1,
     printSettings
   );
@@ -175,6 +282,7 @@ export const usePageSelection = (
   return {
     // State
     selections,
+    selectedPages,
     visiblePages,
     renderErrors,
     printSettings,
@@ -183,6 +291,9 @@ export const usePageSelection = (
     pagesToShow: selections.slice(0, visiblePages),
     hasMorePages: visiblePages < totalPages,
     currentCost,
+    allPagesSelected: selectedPages.length === totalPages,
+    somePagesSelected:
+      selectedPages.length > 0 && selectedPages.length < totalPages,
 
     // Actions
     handlePageTypeChange,
@@ -191,5 +302,8 @@ export const usePageSelection = (
     loadMorePages,
     handlePrintSettingsChange,
     handleCopiesChange,
+    handlePageSelection,
+    selectAllPages,
+    deselectAllPages,
   };
 };

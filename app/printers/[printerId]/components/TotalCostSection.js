@@ -2,6 +2,7 @@ export const TotalCostSection = ({ advancedSettings, totalPages }) => {
   if (!advancedSettings.cost || advancedSettings.cost <= 0) {
     return null;
   }
+  const selectedCount = advancedSettings.selectedPages?.length || totalPages;
 
   return (
     <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-4 sm:p-6 lg:p-6">
@@ -22,6 +23,14 @@ export const TotalCostSection = ({ advancedSettings, totalPages }) => {
             Rp {advancedSettings.cost.toLocaleString("id-ID")}
           </p>
         </div>
+      </div>
+      <div className="flex justify-between items-center mt-4 pt-4 border-t border-green-200">
+        <span className="text-sm text-gray-600">
+          Halaman yang akan dicetak:
+        </span>
+        <span className="text-sm font-medium text-gray-800">
+          {selectedCount} dari {totalPages} halaman
+        </span>
       </div>
     </div>
   );

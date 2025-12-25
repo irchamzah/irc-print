@@ -30,6 +30,12 @@ const PageSelector = ({
     loadMorePages,
     handlePrintSettingsChange,
     handleCopiesChange,
+    handlePageSelection,
+    selectAllPages,
+    deselectAllPages,
+    allPagesSelected,
+    somePagesSelected,
+    selectedPages, // ✅ TAMBAH INI untuk tampilkan jumlah
   } = usePageSelection(totalPages, initialSettings, onSettingsChange);
 
   if (totalPages === 0) return null;
@@ -44,6 +50,71 @@ const PageSelector = ({
         <p className="text-gray-600 text-sm">
           Pilih tiap halaman akan dicetak warna atau hitam-putih
         </p>
+      </div>
+
+      {/* Bulk Actions - TAMBAH SECTION BARU */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center sm:justify-start items-center">
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-medium text-gray-700">
+              Pilih Halaman:
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={selectAllPages}
+                className={`px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${
+                  allPagesSelected
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                }`}
+              >
+                <div className="flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Pilih Semua
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={deselectAllPages}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 text-sm font-medium"
+              >
+                <div className="flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                  Batalkan Semua
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-sm text-gray-500">
+            {allPagesSelected
+              ? "Semua halaman terpilih"
+              : `${selectedPages.length} dari ${totalPages} halaman terpilih`}
+          </div>
+        </div>
       </div>
 
       {/* Bulk Actions */}
@@ -64,17 +135,23 @@ const PageSelector = ({
 
       {/* Pages Grid */}
       <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-        {pagesToShow.map(({ page, type }) => (
-          <PageCard
-            key={page}
-            page={page}
-            type={type}
-            file={file}
-            renderError={renderErrors[page]}
-            onTypeChange={handlePageTypeChange}
-            onRenderError={handleRenderError}
-          />
-        ))}
+        {pagesToShow.map(
+          (
+            { page, type, selected } // ✅ TAMBAH selected di sini
+          ) => (
+            <PageCard
+              key={page}
+              page={page}
+              type={type}
+              selected={selected} // ✅ SEKARANG valid
+              file={file}
+              renderError={renderErrors[page]}
+              onTypeChange={handlePageTypeChange}
+              onSelectionChange={handlePageSelection}
+              onRenderError={handleRenderError}
+            />
+          )
+        )}
       </div>
 
       {/* Load More Button */}
@@ -150,15 +227,59 @@ const BulkActionButton = ({ type, label, onClick }) => {
 const PageCard = ({
   page,
   type,
+  selected, // Tambah prop ini
   file,
   renderError,
   onTypeChange,
+  onSelectionChange, // Tambah prop ini
   onRenderError,
 }) => (
-  <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 p-4">
+  <div
+    className={`bg-white rounded-xl border-2 transition-all duration-200 p-4 relative ${
+      selected
+        ? "border-blue-500 shadow-lg shadow-blue-100"
+        : "border-gray-200 shadow-sm hover:shadow-md opacity-80"
+    }`}
+  >
+    {/* Checkbox di pojok kanan atas */}
+    <div className="absolute top-3 right-3 z-10">
+      <button
+        type="button"
+        onClick={() => onSelectionChange(page, !selected)}
+        className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+          selected
+            ? "bg-blue-600 hover:bg-blue-700"
+            : "bg-gray-200 hover:bg-gray-300 border border-gray-300"
+        }`}
+      >
+        {selected && (
+          <svg
+            className="w-3 h-3 text-white"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
+      </button>
+    </div>
+
+    {/* Badge Halaman */}
     <div className="text-center mb-3">
-      <div className="inline-flex items-center px-3 py-1 bg-gray-100 rounded-full">
-        <span className="text-sm font-medium text-gray-700">
+      <div
+        className={`inline-flex items-center px-3 py-1 rounded-full ${
+          selected ? "bg-blue-100" : "bg-gray-100"
+        }`}
+      >
+        <span
+          className={`text-sm font-medium ${
+            selected ? "text-blue-700" : "text-gray-700"
+          }`}
+        >
           Halaman {page}
         </span>
       </div>
@@ -177,24 +298,37 @@ const PageCard = ({
       )}
     </div>
 
+    {/* Type Selector */}
     <div className="space-y-2">
       <select
         value={type}
         onChange={(e) => onTypeChange(page, e.target.value)}
-        className="w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors text-gray-700"
+        disabled={!selected} // Nonaktifkan jika tidak terpilih
+        className={`w-full py-2 px-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors ${
+          selected
+            ? "border-gray-300 bg-white text-gray-700"
+            : "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+        }`}
       >
         <option value="bw">⚫ Hitam Putih</option>
         <option value="color">🟡 Warna</option>
       </select>
 
+      {/* Status Badge */}
       <div
         className={`text-center px-2 py-1 rounded-lg text-xs font-medium ${
-          type === "color"
-            ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-            : "bg-gray-100 text-gray-800 border border-gray-200"
+          selected
+            ? type === "color"
+              ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+              : "bg-gray-100 text-gray-800 border border-gray-200"
+            : "bg-gray-50 text-gray-400 border border-gray-100"
         }`}
       >
-        {type === "color" ? "Warna" : "Hitam-Putih"}
+        {selected
+          ? type === "color"
+            ? "Warna"
+            : "Hitam-Putih"
+          : "Tidak dipilih"}
       </div>
     </div>
   </div>
