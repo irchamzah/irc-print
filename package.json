@@ -17,7 +17,7 @@
     "dotenv": "^17.2.2",
     "form-data": "^4.0.4",
     "midtrans-client": "^1.4.3",
-    "next": "15.5.3",
+    "next": "15.5.9",
     "pdf-to-printer": "^5.6.0",
     "pdfjs-dist": "^2.16.105",
     "react": "19.1.0",
