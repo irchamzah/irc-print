@@ -14,12 +14,10 @@ export const useRefreshData = (
   // Unified refresh function
   const refreshAllData = async () => {
     if (!userSession?.phone) {
-      console.log("🔒 No user session, skipping refresh");
       return;
     }
 
     if (isRefreshing) {
-      console.log("⏳ Refresh already in progress...");
       return;
     }
 
@@ -29,15 +27,11 @@ export const useRefreshData = (
     setCooldownTimers((prev) => ({ ...prev, refresh: true }));
 
     try {
-      console.log("🔄 Refreshing all user data...");
-
       // Refresh points and transactions concurrently
       await Promise.allSettled([
         refreshUserPoints(),
         refreshPendingTransactions(),
       ]);
-
-      console.log("✅ All data refreshed successfully");
     } catch (error) {
       console.error("❌ Error during refresh:", error);
     } finally {
@@ -78,7 +72,6 @@ export const useRefreshData = (
         };
         setUserSession(updatedSession);
         localStorage.setItem("userSession", JSON.stringify(updatedSession));
-        console.log("✅ Points refreshed:", newPoints);
       }
     } catch (error) {
       console.error("❌ Error refreshing points:", error);
@@ -106,10 +99,6 @@ export const useRefreshData = (
 
       if (result.success) {
         setPendingTransactions(result.pendingTransactions || []);
-        console.log(
-          "✅ Transactions refreshed:",
-          result.pendingTransactions?.length || 0
-        );
       }
     } catch (error) {
       console.error("❌ Error refreshing transactions:", error);

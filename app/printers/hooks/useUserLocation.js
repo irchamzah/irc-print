@@ -13,9 +13,7 @@ export const useUserLocation = () => {
               lng: position.coords.longitude,
             });
           },
-          (error) => {
-            console.log("Location access denied:", error);
-          }
+          (error) => {}
         );
       }
     };

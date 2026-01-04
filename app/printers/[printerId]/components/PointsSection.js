@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 export const PointsSection = ({
   userSession,
   userPoints,
-  phoneNumber = "", // ← DEFAULT VALUE
+  phoneNumber = "",
   checkingPoints,
   refreshingPoints,
   advancedSettings,
@@ -12,10 +12,8 @@ export const PointsSection = ({
   onLogout,
   onPhoneNumberChange,
 }) => {
-  // Local state fallback
   const [localPhoneNumber, setLocalPhoneNumber] = useState(phoneNumber);
 
-  // Sync dengan prop phoneNumber
   useEffect(() => {
     setLocalPhoneNumber(phoneNumber);
   }, [phoneNumber]);
@@ -23,66 +21,64 @@ export const PointsSection = ({
   const handleLocalPhoneChange = (e) => {
     const value = e.target.value;
     setLocalPhoneNumber(value);
-
-    // Panggil parent handler jika ada
-    if (onPhoneNumberChange) {
-      onPhoneNumberChange(value);
-    }
+    if (onPhoneNumberChange) onPhoneNumberChange(value);
   };
 
   const handleCheckPoints = () => {
-    // Gunakan localPhoneNumber untuk Logins
     if (onCheckPoints && onPhoneNumberChange) {
-      // Update parent state dulu
       onPhoneNumberChange(localPhoneNumber);
-      // Lalu Logins
       setTimeout(() => onCheckPoints(), 100);
     } else if (onCheckPoints) {
       onCheckPoints();
     }
   };
 
+  // Login Form (User belum login)
   if (!userSession) {
     return (
-      <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 sm:p-6 lg:p-6">
-        <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5 flex items-center">
-          <svg
-            className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-yellow-600 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-            />
-          </svg>
-          Login
-        </h3>
+      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold text-gray-800 flex items-center">
+            <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center mr-2">
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            Login
+          </h3>
+        </div>
 
-        <div className="space-y-4 sm:space-y-5">
+        <div className="space-y-3">
           <div>
-            <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3">
-              Isi Nomor HP untuk Login
+            <label className="block text-sm text-gray-600 mb-2">
+              Masukkan nomor HP
             </label>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="flex gap-2">
               <input
                 type="tel"
                 value={localPhoneNumber}
                 onChange={handleLocalPhoneChange}
-                placeholder="Contoh: 085117038583"
-                className="flex-1 p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-white text-gray-700 text-sm sm:text-base"
+                placeholder="085117038583"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-black focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-sm"
               />
               <button
                 type="button"
                 onClick={handleCheckPoints}
                 disabled={checkingPoints}
-                className="px-4 sm:px-6 py-3 sm:py-4 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:bg-yellow-400 transition-colors font-medium cursor-pointer text-sm sm:text-base flex items-center justify-center min-w-[120px] sm:min-w-[140px]"
+                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:bg-yellow-300 text-sm font-medium min-w-[80px]"
               >
                 {checkingPoints ? (
-                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
                 ) : (
                   "Login"
                 )}
@@ -94,49 +90,51 @@ export const PointsSection = ({
     );
   }
 
+  // User sudah login
   return (
-    <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-4 sm:p-6 lg:p-6">
-      <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5 flex items-center">
-        <svg
-          className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-yellow-600 flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-          />
-        </svg>
-        Login
-      </h3>
-
-      <div className="space-y-4 sm:space-y-5">
-        {/* User Info Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4">
-          <div className="flex-1">
-            <p className="text-sm sm:text-base text-gray-600 mb-1">
-              Nomor HP terdaftar:
-            </p>
-            <p className="font-semibold text-gray-800 text-base sm:text-lg break-all">
-              {userSession.phone}
-            </p>
+    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200 p-4">
+      {/* Header dengan info user dan tombol aksi */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="flex items-center">
+            <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center mr-2">
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold text-gray-800">Akun Anda</h3>
           </div>
-          <div className="flex gap-2 sm:gap-3 self-start sm:self-center">
-            <button
-              onClick={onRefreshPoints}
-              disabled={refreshingPoints}
-              type="button"
-              className="px-3 sm:px-4 py-2 text-xs sm:text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:bg-blue-50 transition-colors cursor-pointer flex items-center gap-1 sm:gap-2"
-              title="Refresh point terbaru"
-            >
-              {refreshingPoints ? (
-                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-blue-700"></div>
-              ) : (
+          <p className="text-xs text-gray-500 mt-1 truncate max-w-[180px] sm:max-w-none">
+            {userSession.phone}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onRefreshPoints}
+            disabled={refreshingPoints}
+            type="button"
+            className="px-2.5 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 disabled:opacity-50 text-xs flex items-center gap-1"
+          >
+            {refreshingPoints ? (
+              <>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                <span>Loading</span>
+              </>
+            ) : (
+              <>
                 <svg
-                  className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0"
+                  className="w-3 h-3"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -148,77 +146,66 @@ export const PointsSection = ({
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-              )}
-              <span className="sm:inline">Refresh</span>
-            </button>
-            <button
-              onClick={onLogout}
-              className="px-3 sm:px-4 py-2 text-xs sm:text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors cursor-pointer flex items-center gap-1 sm:gap-2"
+                <span>Refresh</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={onLogout}
+            className="px-2.5 py-1 bg-red-100 text-red-600 rounded-md hover:bg-red-200 text-xs flex items-center gap-1"
+          >
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-              <span className="sm:inline">Logout</span>
-            </button>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            <span>Logout</span>
+          </button>
         </div>
-
-        {/* Points Display Card */}
-        <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 border-2 border-yellow-200 shadow-sm">
-          <div className="text-center">
-            <p className="text-sm sm:text-base text-gray-600 mb-2">
-              Total Point Anda
-            </p>
-            <p className="text-2xl sm:text-4xl lg:text-5xl font-bold text-yellow-600 mb-4 sm:mb-6">
-              {typeof userPoints === "number" ? userPoints.toFixed(2) : "0.00"}{" "}
-              <span className="text-lg sm:text-xl lg:text-2xl text-yellow-500">
-                Point
-              </span>
-            </p>
-
-            <button
-              onClick={() =>
-                window.open(
-                  "https://irc-store-one.vercel.app/product",
-                  "_blank"
-                )
-              }
-              type="button"
-              className="w-full max-w-xs mx-auto px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105 font-medium text-sm sm:text-base cursor-pointer flex items-center justify-center gap-2 sm:gap-3 shadow-lg"
-            >
-              ⭐ Tukar Point
-            </button>
-
-            <p className="text-xs sm:text-sm text-gray-500 mt-3 sm:mt-4">
-              Terakhir update: {new Date().toLocaleTimeString()}
-            </p>
-          </div>
-        </div>
-
-        {/* Points Earned Preview */}
-        {advancedSettings.cost > 0 && userSession && (
-          <div className="bg-green-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-green-200">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4">
-              <span className="text-sm sm:text-base text-gray-700 text-center sm:text-left">
-                Point yang akan didapat:
-              </span>
-              <span className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 text-center sm:text-right">
-                +{(advancedSettings.cost / 2000).toFixed(2)} poin
-              </span>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Points Display - Kompak */}
+      <div className="bg-white rounded-md border border-yellow-200 p-3 mb-3">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <span className="text-xs text-gray-500">Total Point:</span>
+            <span className="text-lg font-bold text-yellow-600">
+              {typeof userPoints === "number" ? userPoints.toFixed(2) : "0.00"}
+            </span>
+          </div>
+
+          <button
+            onClick={() =>
+              window.open("https://irc-store-one.vercel.app/product", "_blank")
+            }
+            type="button"
+            className="w-full px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 text-sm font-medium mt-2"
+          >
+            Tukar Point
+          </button>
+        </div>
+      </div>
+
+      {/* Points yang akan didapat */}
+      {advancedSettings.cost > 0 && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-md border border-green-200 p-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-700">Point akan ditambah:</span>
+            <span className="text-sm font-bold text-green-600">
+              +{(advancedSettings.cost / 4000).toFixed(2)}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

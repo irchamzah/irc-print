@@ -1,3 +1,4 @@
+// app/printers/[printerId]/hooks/useFileManagement.js
 import { useState } from "react";
 import { getPDFPageCount, validatePDFFile } from "../../../../utils/pdfUtils";
 

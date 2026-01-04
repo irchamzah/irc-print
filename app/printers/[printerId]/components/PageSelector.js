@@ -1,3 +1,4 @@
+// app/printers/[printerId]/components/PageSelector.js
 "use client";
 import { usePageSelection } from "../hooks/usePageSelection";
 import dynamic from "next/dynamic";
@@ -52,26 +53,28 @@ const PageSelector = ({
         </p>
       </div>
 
-      {/* Bulk Actions - TAMBAH SECTION BARU */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-        <div className="flex flex-col sm:flex-row gap-3 justify-center sm:justify-start items-center">
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-gray-700">
+      {/* Bulk Actions - Versi Minimalis */}
+      <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+        <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+          {/* Bagian Kiri: Label & Tombol */}
+          <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+            <span className="text-sm font-medium text-gray-700 block sm:inline">
               Pilih Halaman:
             </span>
+
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={selectAllPages}
-                className={`px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   allPagesSelected
                     ? "bg-blue-600 text-white"
-                    : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                    : "bg-white text-blue-700 border border-blue-300 hover:bg-blue-50"
                 }`}
               >
                 <div className="flex items-center">
                   <svg
-                    className="w-4 h-4 mr-2"
+                    className="w-3.5 h-3.5 mr-1.5"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -81,17 +84,18 @@ const PageSelector = ({
                       clipRule="evenodd"
                     />
                   </svg>
-                  Pilih Semua
+                  Semua
                 </div>
               </button>
+
               <button
                 type="button"
                 onClick={deselectAllPages}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 text-sm font-medium"
+                className="px-3 py-1.5 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium"
               >
                 <div className="flex items-center">
                   <svg
-                    className="w-4 h-4 mr-2"
+                    className="w-3.5 h-3.5 mr-1.5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -103,16 +107,29 @@ const PageSelector = ({
                       d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
-                  Batalkan Semua
+                  Batalkan
                 </div>
               </button>
             </div>
           </div>
 
+          {/* Bagian Kanan: Info Jumlah */}
           <div className="text-sm text-gray-500">
-            {allPagesSelected
-              ? "Semua halaman terpilih"
-              : `${selectedPages.length} dari ${totalPages} halaman terpilih`}
+            {allPagesSelected ? (
+              <div className="flex items-center">
+                <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                Semua halaman terpilih
+              </div>
+            ) : (
+              <div>
+                <span className="font-medium text-gray-700">
+                  {selectedPages.length}
+                </span>{" "}
+                dari{" "}
+                <span className="font-medium text-gray-700">{totalPages}</span>{" "}
+                halaman
+              </div>
+            )}
           </div>
         </div>
       </div>

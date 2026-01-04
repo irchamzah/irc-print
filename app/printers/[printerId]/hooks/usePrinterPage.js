@@ -1,3 +1,4 @@
+// app/printers/[printerId]/hooks/usePrinterPage.js
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useUserManagement } from "./useUserManagement";
@@ -10,9 +11,9 @@ export const usePrinterPage = () => {
   const printerId = params.printerId;
   const [printer, setPrinter] = useState(null);
   const [isPrinterOffline, setIsPrinterOffline] = useState(false);
-  const [isPaperInsufficient, setIsPaperInsufficient] = useState(false); // ✅ TAMBAH STATE BARU
-  const [availablePaper, setAvailablePaper] = useState(0); // ✅ TAMBAH STATE BARU
-  const [totalPagesNeeded, setTotalPagesNeeded] = useState(0); // ✅ TAMBAH STATE BARU
+  const [isPaperInsufficient, setIsPaperInsufficient] = useState(false);
+  const [availablePaper, setAvailablePaper] = useState(0);
+  const [totalPagesNeeded, setTotalPagesNeeded] = useState(0);
 
   // Initialize all custom hooks
   const userManagement = useUserManagement();
@@ -56,10 +57,6 @@ export const usePrinterPage = () => {
       // Cek status langsung dari data printer
       const isOffline = printer.status === "offline";
       setIsPrinterOffline(isOffline);
-
-      console.log(
-        `🖨️ Printer Status: ${printer.status} | Offline: ${isOffline}`
-      );
     }
   }, [printer]);
 
@@ -127,10 +124,6 @@ export const usePrinterPage = () => {
     // Cek apakah kertas cukup
     const isInsufficient = totalNeeded > availablePaperCount;
     setIsPaperInsufficient(isInsufficient);
-
-    console.log(
-      `📊 Paper Check: Need ${totalNeeded} pages, Available ${availablePaperCount} pages, Insufficient: ${isInsufficient}`
-    );
   };
 
   // Combined handleFileUpload with isLoading

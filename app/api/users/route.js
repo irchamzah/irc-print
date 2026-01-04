@@ -7,8 +7,6 @@ export async function POST(request) {
     const body = await request.json();
     const { phone, name } = body;
 
-    console.log("📝 Creating new user in VPS:", phone);
-
     // Validate input
     if (!phone) {
       return NextResponse.json(

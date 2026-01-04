@@ -6,11 +6,6 @@ export async function POST(request) {
     const { amount, orderId, phoneNumber } = await request.json(); // ← TAMBAH phoneNumber
 
     // --- LOGGING #1: Payload dari Klien ---
-    console.log("Payload received from client:", {
-      amount,
-      orderId,
-      phoneNumber,
-    });
 
     // Determine environment and keys
     const isProduction = process.env.MIDTRANS_ENVIRONMENT === "production";
@@ -21,9 +16,6 @@ export async function POST(request) {
     const clientKey = isProduction
       ? process.env.MIDTRANS_CLIENT_KEY_PRODUCTION
       : process.env.MIDTRANS_CLIENT_KEY_SANDBOX;
-
-    console.log(`🔧 Midtrans Environment: ${process.env.MIDTRANS_ENVIRONMENT}`);
-    console.log(`🔧 Is Production: ${isProduction}`);
 
     // Initialize Snap client
     let snap = new midtransClient.Snap({
@@ -55,21 +47,10 @@ export async function POST(request) {
           phone: phoneNumber,
         },
       };
-
-      console.log(`📱 Customer phone added to Midtrans: ${phoneNumber}`);
     }
-
-    // --- LOGGING #2: Payload ke Midtrans ---
-    console.log(
-      "Payload sent to Midtrans:",
-      JSON.stringify(parameter, null, 2)
-    );
 
     // Create transaction
     const transaction = await snap.createTransaction(parameter);
-
-    // --- LOGGING #3: Respon dari Midtrans ---
-    console.log("Response from Midtrans:", JSON.stringify(transaction));
 
     return NextResponse.json({
       success: true,

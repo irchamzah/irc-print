@@ -22,11 +22,8 @@ export async function GET(request, { params }) {
 
     clearTimeout(timeoutId);
 
-    console.log("📡 [FRONTEND] VPS GET response status:", getResponse.status);
-
     if (getResponse.ok) {
       const result = await getResponse.json();
-      console.log("📊 [FRONTEND] VPS GET success:", result);
 
       if (result.success) {
         if (result.user) {
@@ -42,14 +39,12 @@ export async function GET(request, { params }) {
           });
         } else {
           // User tidak ditemukan, buat user baru
-          console.log("📝 [FRONTEND] User not found, creating new user...");
           return await createNewUser(phone);
         }
       }
     }
 
     // Jika GET gagal, coba buat user baru langsung
-    console.log("🔄 [FRONTEND] GET failed, trying to create new user...");
     return await createNewUser(phone);
   } catch (error) {
     if (error.name === "AbortError") {
@@ -93,8 +88,6 @@ export async function POST(request) {
 
     clearTimeout(timeoutId);
 
-    console.log("📡 [FRONTEND] VPS POST response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error("❌ [FRONTEND] VPS POST failed:", errorText);
@@ -102,7 +95,6 @@ export async function POST(request) {
     }
 
     const result = await response.json();
-    console.log("📝 [FRONTEND] VPS POST success:", result);
 
     return NextResponse.json(result);
   } catch (error) {
@@ -132,7 +124,6 @@ export async function POST(request) {
 // Helper function untuk create new user
 async function createNewUser(phone) {
   try {
-    console.log("👤 [FRONTEND] Creating new user for:", phone);
 
     const createResponse = await fetch(`${VPS_API_URL}/api/users/points`, {
       method: "POST",
@@ -148,11 +139,6 @@ async function createNewUser(phone) {
       }),
     });
 
-    console.log(
-      "📡 [FRONTEND] Create user response status:",
-      createResponse.status
-    );
-
     if (!createResponse.ok) {
       const errorText = await createResponse.text();
       console.error("❌ [FRONTEND] Create user failed:", errorText);
@@ -160,7 +146,6 @@ async function createNewUser(phone) {
     }
 
     const createResult = await createResponse.json();
-    console.log("📝 [FRONTEND] Create user result:", createResult);
 
     if (createResult.success) {
       return NextResponse.json({

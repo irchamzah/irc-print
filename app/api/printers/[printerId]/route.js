@@ -7,8 +7,6 @@ export async function GET(request, { params }) {
     // AWAIT params sebelum digunakan
     const { printerId } = await params;
 
-    console.log("🔍 Fetching printer details for:", printerId);
-
     const response = await fetch(`${VPS_API_URL}/api/printers/${printerId}`);
 
     if (!response.ok) {

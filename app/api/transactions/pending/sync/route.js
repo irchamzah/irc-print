@@ -14,10 +14,6 @@ export async function GET(request) {
       );
     }
 
-    console.log(
-      `🔄 [FRONTEND] Syncing pending transactions for: ${phoneNumber}`
-    );
-
     // 1. Ambil pending transactions dari VPS
     const pendingResponse = await fetch(
       `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`
@@ -40,17 +36,9 @@ export async function GET(request) {
     const pendingTransactions = pendingResult.pendingTransactions;
     const updatedTransactions = [];
 
-    console.log(
-      `📦 [FRONTEND] Found ${pendingTransactions.length} pending transactions to sync`
-    );
-
     // 2. Untuk setiap pending transaction, cek status di Midtrans
     for (const transaction of pendingTransactions) {
       try {
-        console.log(
-          `🔍 [FRONTEND] Checking Midtrans status for: ${transaction.orderId}`
-        );
-
         // Gunakan endpoint payment status yang sudah ada
         const statusResponse = await fetch(
           `${
@@ -65,20 +53,12 @@ export async function GET(request) {
             const midtransStatus = statusResult.status;
             const currentStatus = transaction.status;
 
-            console.log(
-              `📊 [FRONTEND] Transaction ${transaction.orderId}: VPS=${currentStatus}, Midtrans=${midtransStatus}`
-            );
-
             // Jika status di Midtrans berbeda dengan di VPS, update di VPS
             if (
               (midtransStatus === "settlement" ||
                 midtransStatus === "capture") &&
               currentStatus === "pending"
             ) {
-              console.log(
-                `🔄 [FRONTEND] Updating transaction ${transaction.orderId} to settlement`
-              );
-
               // Update status di VPS
               const updateResponse = await fetch(
                 `${VPS_API_URL}/api/transactions/update-status`,
@@ -115,10 +95,6 @@ export async function GET(request) {
               midtransStatus === "expire" &&
               currentStatus === "pending"
             ) {
-              console.log(
-                `🔄 [FRONTEND] Updating transaction ${transaction.orderId} to expired`
-              );
-
               // Update status expired di VPS
               const updateResponse = await fetch(
                 `${VPS_API_URL}/api/transactions/update-status`,
@@ -148,10 +124,6 @@ export async function GET(request) {
               midtransStatus === "cancel" &&
               currentStatus === "pending"
             ) {
-              console.log(
-                `🔄 [FRONTEND] Updating transaction ${transaction.orderId} to cancelled`
-              );
-
               // Update status cancelled di VPS
               const updateResponse = await fetch(
                 `${VPS_API_URL}/api/transactions/update-status`,
@@ -206,10 +178,6 @@ export async function GET(request) {
       // Jika gagal ambil data terbaru, gunakan data awal
       finalPendingTransactions = pendingTransactions;
     }
-
-    console.log(
-      `✅ [FRONTEND] Sync completed: ${updatedTransactions.length} transactions updated`
-    );
 
     return NextResponse.json({
       success: true,

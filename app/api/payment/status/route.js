@@ -34,12 +34,6 @@ export async function GET(request) {
       );
     }
 
-    console.log(
-      `🔧 Midtrans Status Check - Environment: ${midtransEnvironment}`
-    );
-    console.log(`🔧 Order ID: ${orderId}`);
-    console.log(`🔧 Server Key Available: ${!!serverKey}`);
-
     // Initialize Snap client
     let snap = new midtransClient.Snap({
       isProduction: isProduction,
@@ -53,12 +47,6 @@ export async function GET(request) {
         setTimeout(() => reject(new Error("Midtrans timeout")), 10000)
       ),
     ]);
-
-    console.log("📊 Payment status check success:", {
-      orderId: orderId,
-      status: statusResponse.transaction_status,
-      environment: midtransEnvironment,
-    });
 
     return NextResponse.json({
       success: true,

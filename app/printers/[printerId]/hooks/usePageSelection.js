@@ -1,3 +1,4 @@
+// app/printers/[printerId]/hooks/usePageSelection.js
 import { PRINT_SETTINGS } from "@/lib/printConstants";
 import { useEffect, useState } from "react";
 
@@ -138,9 +139,17 @@ export const usePageSelection = (
     });
   };
 
+  const calculateBwPricePerPage = (bwPages, copies) => {
+    // Hitung total lembar yang akan dicetak
+    const totalSheets = bwPages * copies;
+
+    // Logika: jika total lembar BW ≥ 10, harga = 200, jika tidak = 400
+    return totalSheets >= 10 ? 200 : 400;
+  };
+
   // Calculate cost based on selections and settings - DIPERBAIKI
   const calculateCostWithSettings = (selections, copies, settings) => {
-    const selectedSelections = selections.filter((sel) => sel.selected); // Filter hanya yang selected
+    const selectedSelections = selections.filter((sel) => sel.selected);
     const colorPages = selectedSelections.filter(
       (s) => s.type === "color"
     ).length;
@@ -150,7 +159,17 @@ export const usePageSelection = (
     const quality = settings.quality || "NORMAL";
 
     const colorCostPerPage = PRINT_SETTINGS.COSTS.COLOR[paperSize] || 1500;
-    const bwCostPerPage = PRINT_SETTINGS.COSTS.BW[paperSize] || 500;
+
+    // HITUNG HARGA BW DINAMIS BERDASARKAN JUMLAH LEMBAR (halaman × rangkap)
+    let bwCostPerPage;
+    if (paperSize === "A4") {
+      // Hanya terapkan untuk ukuran A4
+      bwCostPerPage = calculateBwPricePerPage(bwPages, copies);
+    } else {
+      // Untuk ukuran lain, gunakan harga tetap dari constants
+      bwCostPerPage = PRINT_SETTINGS.COSTS.BW[paperSize] || 500;
+    }
+
     const qualitySurcharge =
       PRINT_SETTINGS.COSTS.QUALITY_SURCHARGE[quality] || 0;
 

@@ -1,3 +1,4 @@
+// app/printers/[printerId]/page.js
 "use client";
 import { usePrinterPage } from "./hooks/usePrinterPage";
 import { PrinterHeader } from "./components/PrinterHeader";

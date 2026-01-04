@@ -7,19 +7,9 @@ export async function POST(request) {
     const contentType = request.headers.get("content-type");
     const url = new URL(request.url);
 
-    console.log("📡 Received request to:", url.pathname);
-    console.log("📋 Content-Type:", contentType);
-
     if (contentType && contentType.includes("application/json")) {
       // Handle restored transaction - forward as JSON to same endpoint
       const jsonData = await request.json();
-
-      console.log("📤 Forwarding RESTORED transaction to VPS");
-      console.log("📦 Payload:", {
-        orderId: jsonData.orderId,
-        printerId: jsonData.printerId,
-        isRestoredTransaction: jsonData.isRestoredTransaction,
-      });
 
       const response = await fetch(`${VPS_API_URL}/api/print`, {
         method: "POST",
@@ -32,9 +22,6 @@ export async function POST(request) {
         }),
       });
 
-      // DEBUG: Handle response properly
-      console.log("📡 VPS response status:", response.status);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error("❌ VPS error response:", errorText);
@@ -44,14 +31,11 @@ export async function POST(request) {
       }
 
       const result = await response.json();
-      console.log("✅ VPS restored response:", result);
 
       return NextResponse.json(result);
     } else {
       // Handle normal file upload - original code
       const formData = await request.formData();
-
-      console.log("📤 Forwarding NORMAL transaction to VPS");
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -71,7 +55,6 @@ export async function POST(request) {
       }
 
       const result = await response.json();
-      console.log("✅ VPS response:", result);
 
       return NextResponse.json(result);
     }
