@@ -63,19 +63,19 @@ export const PointsSection = ({
             <label className="block text-sm text-gray-600 mb-2">
               Masukkan nomor HP
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full">
               <input
                 type="tel"
                 value={localPhoneNumber}
                 onChange={handleLocalPhoneChange}
                 placeholder="085117038583"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-black focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-sm"
+                className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md text-black focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-sm"
               />
               <button
                 type="button"
                 onClick={handleCheckPoints}
                 disabled={checkingPoints}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:bg-yellow-300 text-sm font-medium min-w-[80px]"
+                className="flex-shrink-0 px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:bg-yellow-300 text-sm font-medium w-[80px]"
               >
                 {checkingPoints ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>

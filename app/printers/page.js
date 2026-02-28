@@ -26,7 +26,7 @@ export default function PrintersPage() {
         />
       </main>
 
-      <PrintersFooter />
+      {/* <PrintersFooter />s */}
     </div>
   );
 }

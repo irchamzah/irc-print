@@ -8,7 +8,7 @@ export default function PrintersFooter() {
           Butuh Bantuan?
         </h4>
         <p className="text-gray-600 mb-4">
-          Hubungi kami jika mengalami kendala
+          Hubungi kami jika mengalami kendala atau ingin memberikan masukan.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
