@@ -18,6 +18,7 @@ const PageSelector = ({
   onSettingsChange,
   initialSettings,
   file,
+  prices,
 }) => {
   const {
     pagesToShow,
@@ -36,22 +37,22 @@ const PageSelector = ({
     deselectAllPages,
     allPagesSelected,
     somePagesSelected,
-    selectedPages, // ✅ TAMBAH INI untuk tampilkan jumlah
-  } = usePageSelection(totalPages, initialSettings, onSettingsChange);
+    selectedPages,
+  } = usePageSelection(totalPages, initialSettings, onSettingsChange, prices);
 
   if (totalPages === 0) return null;
 
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="text-center sm:text-left">
+      {/* <div className="text-center sm:text-left">
         <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
           Atur Jenis Print per Halaman
         </h3>
         <p className="text-gray-600 text-sm">
           Pilih tiap halaman akan dicetak warna atau hitam-putih
         </p>
-      </div>
+      </div> */}
 
       {/* Bulk Actions - Versi Minimalis */}
       <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
@@ -59,7 +60,7 @@ const PageSelector = ({
           {/* Bagian Kiri: Label & Tombol */}
           <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
             <span className="text-sm font-medium text-gray-700 block sm:inline">
-              Pilih Halaman:
+              Pilih halaman yang akan di print:
             </span>
 
             <div className="flex gap-2">
@@ -154,7 +155,7 @@ const PageSelector = ({
       <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
         {pagesToShow.map(
           (
-            { page, type, selected } // ✅ TAMBAH selected di sini
+            { page, type, selected }, // ✅ TAMBAH selected di sini
           ) => (
             <PageCard
               key={page}
@@ -167,7 +168,7 @@ const PageSelector = ({
               onSelectionChange={handlePageSelection}
               onRenderError={handleRenderError}
             />
-          )
+          ),
         )}
       </div>
 
@@ -461,20 +462,100 @@ const PaperSizeSetting = ({ value, onChange }) => (
   </div>
 );
 
-const CopiesSetting = ({ value, onChange }) => (
-  <div className="space-y-2">
-    <label className="block text-sm font-medium text-gray-700">
-      📑 Jumlah Salinan
-    </label>
-    <input
-      type="number"
-      min="1"
-      max="50"
-      value={value}
-      onChange={(e) => onChange(parseInt(e.target.value) || 1)}
-      className="w-full p-3 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-center text-gray-700"
-    />
-  </div>
-);
+const CopiesSetting = ({ value, onChange }) => {
+  const handleDecrement = () => {
+    const newValue = Math.max(1, value - 1);
+    onChange(newValue);
+  };
+
+  const handleIncrement = () => {
+    const newValue = Math.min(50, value + 1);
+    onChange(newValue);
+  };
+
+  const handleInputChange = (e) => {
+    const newValue = parseInt(e.target.value);
+    if (!isNaN(newValue) && newValue >= 1 && newValue <= 50) {
+      onChange(newValue);
+    }
+  };
+
+  const handleBlur = (e) => {
+    const newValue = parseInt(e.target.value);
+    if (isNaN(newValue) || newValue < 1) {
+      onChange(1);
+    } else if (newValue > 50) {
+      onChange(50);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700">
+        📑 Jumlah Salinan
+      </label>
+
+      <div className="flex items-center">
+        {/* Tombol Minus */}
+        <button
+          type="button"
+          onClick={handleDecrement}
+          disabled={value <= 1}
+          className="w-10 h-10 rounded-l-lg border border-gray-300 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-gray-600 transition-colors"
+          aria-label="Kurangi jumlah salinan"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 12H4"
+            />
+          </svg>
+        </button>
+
+        {/* Input Number */}
+        <input
+          type="number"
+          min="1"
+          max="50"
+          value={value}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          className="w-20 h-10 border-t border-b border-gray-300 bg-white text-center text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          style={{ WebkitAppearance: "textfield", MozAppearance: "textfield" }}
+        />
+
+        {/* Tombol Plus */}
+        <button
+          type="button"
+          onClick={handleIncrement}
+          disabled={value >= 50}
+          className="w-10 h-10 rounded-r-lg border border-gray-300 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-gray-600 transition-colors"
+          aria-label="Tambah jumlah salinan"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default PageSelector;

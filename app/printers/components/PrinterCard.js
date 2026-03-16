@@ -15,8 +15,8 @@ export default function PrinterCard({ printer, userLocation }) {
       ...printer.location,
       coordinates: Array.isArray(printer.location?.coordinates)
         ? {
-            lng: printer.location.coordinates[0],
-            lat: printer.location.coordinates[1],
+            lng: printer.location.coordinates.coordinates[0],
+            lat: printer.location.coordinates.coordinates[1],
           }
         : printer.location?.coordinates,
     },
@@ -28,7 +28,7 @@ export default function PrinterCard({ printer, userLocation }) {
 
   const distance = calculateDistance(
     normalizedPrinter.location?.coordinates,
-    userLocation
+    userLocation,
   );
 
   const handlePrinterSelect = () => {
@@ -38,16 +38,17 @@ export default function PrinterCard({ printer, userLocation }) {
   const handleMapsClick = (e) => {
     e.stopPropagation();
 
-    // Cek jika mapsUrl tersedia
     if (normalizedPrinter.location?.mapsUrl) {
       window.open(
         normalizedPrinter.location.mapsUrl,
         "_blank",
-        "noopener,noreferrer"
+        "noopener,noreferrer",
       );
     } else {
-      // Fallback: buka Google Maps dengan koordinat jika ada
-      const { lat, lng } = normalizedPrinter.location?.coordinates || {};
+      const { lat, lng } = {
+        lat: normalizedPrinter.location?.coordinates.coordinates[1],
+        lng: normalizedPrinter.location?.coordinates.coordinates[0],
+      };
       if (lat && lng) {
         const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
         window.open(googleMapsUrl, "_blank", "noopener,noreferrer");
@@ -58,6 +59,20 @@ export default function PrinterCard({ printer, userLocation }) {
     }
   };
 
+  // ✅ Helper function untuk mendapatkan teks lokasi
+  const getLocationText = () => {
+    if (normalizedPrinter.location?.address) {
+      return normalizedPrinter.location.address;
+    }
+    if (typeof normalizedPrinter.location === "string") {
+      return normalizedPrinter.location;
+    }
+    if (normalizedPrinter.location?.city) {
+      return normalizedPrinter.location.city;
+    }
+    return "Lokasi tidak tersedia";
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 overflow-hidden hover:scale-105 group">
       {/* Status Header */}
@@ -65,7 +80,7 @@ export default function PrinterCard({ printer, userLocation }) {
         <div className="flex items-center justify-between">
           <span className="text-white font-medium text-sm">
             {getStatusIcon(normalizedPrinter.status)}{" "}
-            {normalizedPrinter.status.toUpperCase()}
+            {normalizedPrinter.status?.toUpperCase() || "OFFLINE"}
           </span>
         </div>
       </div>
@@ -74,7 +89,7 @@ export default function PrinterCard({ printer, userLocation }) {
       <div className="p-5 sm:p-6">
         {/* Printer Name */}
         <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
-          {normalizedPrinter.name}
+          {normalizedPrinter.name || "Printer"}
         </h3>
 
         {/* Location Info */}
@@ -82,9 +97,9 @@ export default function PrinterCard({ printer, userLocation }) {
           <div className="flex items-start">
             <span className="text-gray-500 mr-2 mt-0.5 flex-shrink-0">📍</span>
             <div className="flex-1 min-w-0">
+              {/* ✅ Perbaikan di sini - gunakan fungsi getLocationText() */}
               <p className="text-gray-600 text-sm line-clamp-2">
-                {normalizedPrinter.location?.address ||
-                  normalizedPrinter.location}
+                {getLocationText()}
               </p>
               <div className="flex items-center justify-between mt-1">
                 {distance && (
@@ -127,7 +142,7 @@ export default function PrinterCard({ printer, userLocation }) {
               }`}
             >
               {normalizedPrinter.paperStatus?.available
-                ? `${normalizedPrinter.paperStatus.paperCount} kertas tersedia`
+                ? `${normalizedPrinter.paperStatus.paperCount || 0} kertas tersedia`
                 : "Kertas habis"}
             </span>
           </div>

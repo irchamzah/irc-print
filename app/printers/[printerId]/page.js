@@ -10,7 +10,8 @@ import { SubmitButton } from "./components/SubmitButton";
 import { LoadingSpinner, FullPageLoader } from "./components/LoadingSpinner";
 import dynamic from "next/dynamic";
 import PaymentModal from "@/app/printers/[printerId]/components/PaymentModal";
-// HAPUS: import { useFileManagement } from "./hooks/useFileManagement"; // ❌ TIDAK PERLU
+import BottomBar from "@/app/components/BottomBar";
+import TopBar from "@/app/components/TopBar";
 
 const PageSelector = dynamic(
   () => import("@/app/printers/[printerId]/components/PageSelector"),
@@ -21,7 +22,7 @@ const PageSelector = dynamic(
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     ),
-  }
+  },
 );
 
 export default function PrinterPage() {
@@ -47,13 +48,11 @@ export default function PrinterPage() {
     isPaperInsufficient,
     availablePaper,
     totalPagesNeeded,
-
-    // Setters
-    setPhoneNumber,
+    prices,
 
     // Functions
     handleFileUpload,
-    handleSettingsChange, // ✅ Ini sudah termasuk dari fileManagement
+    handleSettingsChange,
     handleSubmit,
     handlePaymentSuccess,
     handlePaymentCancelled,
@@ -70,89 +69,107 @@ export default function PrinterPage() {
     return <LoadingSpinner />;
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <PrinterHeader printer={printer} />
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="p-4 sm:p-6 lg:p-8">
-            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-              <FileUploadSection
-                file={file}
-                onFileUpload={handleFileUpload}
-                isLoading={isLoading}
-              />
-
-              {file && totalPages > 0 && (
-                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 sm:p-6">
-                  <PageSelector
-                    totalPages={totalPages}
-                    initialSettings={advancedSettings}
-                    onSettingsChange={handleSettingsChange} // ✅ Gunakan yang dari usePrinterPage
-                    file={file}
-                  />
-                </div>
-              )}
-
-              <PointsSection
-                userSession={userSession}
-                userPoints={userPoints}
-                phoneNumber={userSession?.phone || ""}
-                checkingPoints={checkingPoints}
-                refreshingPoints={refreshingPoints}
-                advancedSettings={advancedSettings}
-                onCheckPoints={checkUserPoints}
-                onRefreshPoints={refreshUserPoints}
-                onLogout={logoutUser}
-                onPhoneNumberChange={handlePhoneNumberChange}
-              />
-
-              <PendingTransactionsSection
-                userSession={userSession}
-                pendingTransactions={pendingTransactions}
-                loadingTransactions={loadingTransactions}
-                refreshingTransactions={refreshingTransactions}
-                cooldownTimers={cooldownTimers}
-                onRefresh={refreshPendingTransactions}
-                onContinue={handleContinuePendingTransaction}
-                onCancel={handleCancelPendingTransaction}
-                isLoading={isLoading}
-                isPrinterOffline={isPrinterOffline}
-                isPaperInsufficient={isPaperInsufficient}
-              />
-
-              <TotalCostSection
-                advancedSettings={advancedSettings}
-                totalPages={totalPages}
-              />
-
-              <SubmitButton
-                isLoading={isLoading}
-                advancedSettings={advancedSettings}
-                onSubmit={handleSubmit}
-                isPrinterOffline={isPrinterOffline}
-                userSession={userSession}
-                isPaperInsufficient={isPaperInsufficient}
-                availablePaper={availablePaper}
-                totalPagesNeeded={totalPagesNeeded}
-              />
-            </form>
-          </div>
+  if (!prices) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat data harga...</p>
         </div>
-      </main>
+      </div>
+    );
+  }
 
-      {isLoading && <FullPageLoader />}
+  return (
+    <>
+      <TopBar />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <PrinterHeader printer={printer} />
 
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={handlePaymentCancelled}
-        onSuccess={handlePaymentSuccess}
-        paymentData={paymentData}
-        isLoading={isLoading}
-        userSession={userSession}
-        isRestoredTransaction={paymentData?.isRestored || false}
-      />
-    </div>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="p-4 sm:p-6 lg:p-8">
+              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                <FileUploadSection
+                  file={file}
+                  onFileUpload={handleFileUpload}
+                  isLoading={isLoading}
+                />
+
+                {file && totalPages > 0 && (
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 sm:p-6">
+                    <PageSelector
+                      totalPages={totalPages}
+                      initialSettings={advancedSettings}
+                      onSettingsChange={handleSettingsChange}
+                      file={file}
+                      prices={prices}
+                    />
+                  </div>
+                )}
+
+                <PointsSection
+                  userSession={userSession}
+                  userPoints={userPoints}
+                  phoneNumber={userSession?.phone || ""}
+                  checkingPoints={checkingPoints}
+                  refreshingPoints={refreshingPoints}
+                  advancedSettings={advancedSettings}
+                  pointDivider={printer.pointDivider}
+                  onCheckPoints={checkUserPoints}
+                  onRefreshPoints={refreshUserPoints}
+                  onLogout={logoutUser}
+                  onPhoneNumberChange={handlePhoneNumberChange}
+                />
+
+                <PendingTransactionsSection
+                  userSession={userSession}
+                  pendingTransactions={pendingTransactions}
+                  loadingTransactions={loadingTransactions}
+                  refreshingTransactions={refreshingTransactions}
+                  cooldownTimers={cooldownTimers}
+                  onRefresh={refreshPendingTransactions}
+                  onContinue={handleContinuePendingTransaction}
+                  onCancel={handleCancelPendingTransaction}
+                  isLoading={isLoading}
+                  isPrinterOffline={isPrinterOffline}
+                  isPaperInsufficient={isPaperInsufficient}
+                />
+
+                <TotalCostSection
+                  advancedSettings={advancedSettings}
+                  totalPages={totalPages}
+                  prices={prices}
+                />
+
+                <SubmitButton
+                  isLoading={isLoading}
+                  advancedSettings={advancedSettings}
+                  onSubmit={handleSubmit}
+                  isPrinterOffline={isPrinterOffline}
+                  userSession={userSession}
+                  isPaperInsufficient={isPaperInsufficient}
+                  availablePaper={availablePaper}
+                  totalPagesNeeded={totalPagesNeeded}
+                />
+              </form>
+            </div>
+          </div>
+        </main>
+
+        {isLoading && <FullPageLoader />}
+
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={handlePaymentCancelled}
+          onSuccess={handlePaymentSuccess}
+          paymentData={paymentData}
+          isLoading={isLoading}
+          userSession={userSession}
+          isRestoredTransaction={paymentData?.isRestored || false}
+        />
+      </div>
+      <BottomBar />
+    </>
   );
 }

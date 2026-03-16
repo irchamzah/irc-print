@@ -1,3 +1,5 @@
+// app/printers/[printerId]/components/PaymentModal.js
+
 "use client";
 import { usePaymentModal } from "../hooks/usePaymentModal";
 

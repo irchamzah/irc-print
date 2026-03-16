@@ -1,3 +1,4 @@
+// app/printers/[printerId]/components/PointsSection.js (FRONTEND Next.js)
 import { useEffect, useState } from "react";
 
 export const PointsSection = ({
@@ -7,6 +8,7 @@ export const PointsSection = ({
   checkingPoints,
   refreshingPoints,
   advancedSettings,
+  pointDivider,
   onCheckPoints,
   onRefreshPoints,
   onLogout,
@@ -69,7 +71,7 @@ export const PointsSection = ({
                 value={localPhoneNumber}
                 onChange={handleLocalPhoneChange}
                 placeholder="085117038583"
-                className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md text-black focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-sm"
+                className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-sm"
               />
               <button
                 type="button"
@@ -201,7 +203,7 @@ export const PointsSection = ({
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-700">Point akan ditambah:</span>
             <span className="text-sm font-bold text-green-600">
-              +{(advancedSettings.cost / 4000).toFixed(2)}
+              +{(advancedSettings.cost / pointDivider).toFixed(2)}
             </span>
           </div>
         </div>

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 export const usePageSelection = (
   totalPages,
   initialSettings,
-  onSettingsChange
+  onSettingsChange,
+  prices,
 ) => {
   const [selections, setSelections] = useState([]);
   const [selectedPages, setSelectedPages] = useState([]);
@@ -18,18 +19,22 @@ export const usePageSelection = (
       quality: "NORMAL",
       margins: "NORMAL",
       duplex: false,
-    }
+    },
   );
 
   // Initialize selections
   useEffect(() => {
+    if (!prices) {
+      return;
+    }
+
     const initialSelections = Array.from({ length: totalPages }, (_, i) => ({
       page: i + 1,
       type: initialSettings?.colorPages?.includes(i + 1)
         ? "color"
         : initialSettings?.bwPages?.includes(i + 1)
-        ? "bw"
-        : "bw",
+          ? "bw"
+          : "bw",
       selected: true,
     }));
     setSelections(initialSelections);
@@ -39,20 +44,23 @@ export const usePageSelection = (
       const initialCost = calculateCostWithSettings(
         initialSelections,
         initialSettings.copies || 1,
-        printSettings
+        printSettings,
+        prices,
       );
       notifyParent(
         initialSelections,
         initialSettings.copies || 1,
         printSettings,
-        initialCost
+        initialCost,
       );
     }
-  }, [totalPages]);
+  }, [totalPages, prices]);
 
   const handlePageSelection = (pageNumber, isSelected) => {
+    if (!prices) return;
+
     const newSelections = selections.map((sel) =>
-      sel.page === pageNumber ? { ...sel, selected: isSelected } : sel
+      sel.page === pageNumber ? { ...sel, selected: isSelected } : sel,
     );
     setSelections(newSelections);
 
@@ -65,7 +73,8 @@ export const usePageSelection = (
     const cost = calculateCostWithSettings(
       newSelections.filter((sel) => sel.selected),
       initialSettings.copies || 1,
-      printSettings
+      printSettings,
+      prices,
     );
 
     // Notify parent hanya dengan halaman yang terpilih
@@ -86,8 +95,9 @@ export const usePageSelection = (
     });
   };
 
-  // Fungsi untuk select/deselect semua - DIPERBAIKI
   const selectAllPages = () => {
+    if (!prices) return;
+
     const newSelections = selections.map((sel) => ({ ...sel, selected: true }));
     setSelections(newSelections);
     setSelectedPages(Array.from({ length: totalPages }, (_, i) => i + 1));
@@ -95,7 +105,8 @@ export const usePageSelection = (
     const cost = calculateCostWithSettings(
       newSelections.filter((sel) => sel.selected),
       initialSettings.copies || 1,
-      printSettings
+      printSettings,
+      prices,
     );
 
     const selectedColorPages = newSelections
@@ -120,13 +131,16 @@ export const usePageSelection = (
       ...sel,
       selected: false,
     }));
+    if (!prices) return;
+
     setSelections(newSelections);
     setSelectedPages([]);
 
     const cost = calculateCostWithSettings(
       newSelections.filter((sel) => sel.selected),
       initialSettings.copies || 1,
-      printSettings
+      printSettings,
+      prices,
     );
 
     onSettingsChange({
@@ -139,39 +153,72 @@ export const usePageSelection = (
     });
   };
 
-  const calculateBwPricePerPage = (bwPages, copies) => {
-    // Hitung total lembar yang akan dicetak
-    const totalSheets = bwPages * copies;
+  // Fungsi untuk menghitung harga BW berdasarkan tier
+  const calculateBwPriceFromTiers = (totalSheets, bwTiers) => {
+    if (!bwTiers || bwTiers.length === 0) {
+      return 500; // Default
+    }
 
-    // Logika: jika total lembar BW ≥ 10, harga = 200, jika tidak = 400
-    return totalSheets >= 10 ? 200 : 400;
+    // Urutkan tiers dari minSheets terbesar ke terkecil
+    const sortedTiers = [...bwTiers].sort((a, b) => b.minSheets - a.minSheets);
+
+    // Cari tier dengan minSheets yang paling besar tapi masih <= totalSheets
+    for (const tier of sortedTiers) {
+      if (totalSheets >= tier.minSheets) {
+        return tier.price;
+      }
+    }
+
+    // Fallback ke tier pertama (paling kecil)
+    return bwTiers[0]?.price || 500;
   };
 
-  // Calculate cost based on selections and settings - DIPERBAIKI
-  const calculateCostWithSettings = (selections, copies, settings) => {
+  const calculateBwPricePerPage = (bwPages, copies, prices) => {
+    const totalSheets = bwPages * copies;
+
+    // Gunakan tier pricing jika tersedia
+    if (prices?.bwTiers) {
+      return calculateBwPriceFromTiers(totalSheets, prices.bwTiers);
+    }
+
+    // Fallback ke logic lama jika tidak ada tier
+    const normalPrice = prices?.bwNormal || 500;
+    const discountPrice = prices?.bwDiscount || 200;
+    const discountThreshold = prices?.bwDiscountThreshold || 10;
+
+    return totalSheets >= discountThreshold ? discountPrice : normalPrice;
+  };
+
+  const calculateCostWithSettings = (selections, copies, settings, prices) => {
+    if (!prices) return 0;
+
     const selectedSelections = selections.filter((sel) => sel.selected);
     const colorPages = selectedSelections.filter(
-      (s) => s.type === "color"
+      (s) => s.type === "color",
     ).length;
     const bwPages = selectedSelections.filter((s) => s.type === "bw").length;
 
     const paperSize = settings.paperSize || "A4";
     const quality = settings.quality || "NORMAL";
 
-    const colorCostPerPage = PRINT_SETTINGS.COSTS.COLOR[paperSize] || 1500;
+    // Hitung TOTAL LEMBAR (warna + BW)
+    const totalSheets = (colorPages + bwPages) * copies;
 
-    // HITUNG HARGA BW DINAMIS BERDASARKAN JUMLAH LEMBAR (halaman × rangkap)
+    const colorCostPerPage = prices?.color?.[paperSize] || 1500;
+
     let bwCostPerPage;
     if (paperSize === "A4") {
-      // Hanya terapkan untuk ukuran A4
-      bwCostPerPage = calculateBwPricePerPage(bwPages, copies);
+      // Gunakan totalSheets untuk menentukan harga BW
+      if (prices?.bwTiers) {
+        bwCostPerPage = calculateBwPriceFromTiers(totalSheets, prices.bwTiers);
+      } else {
+        bwCostPerPage = prices?.bw?.[paperSize] || 500;
+      }
     } else {
-      // Untuk ukuran lain, gunakan harga tetap dari constants
-      bwCostPerPage = PRINT_SETTINGS.COSTS.BW[paperSize] || 500;
+      bwCostPerPage = prices?.bw?.[paperSize] || 500;
     }
 
-    const qualitySurcharge =
-      PRINT_SETTINGS.COSTS.QUALITY_SURCHARGE[quality] || 0;
+    const qualitySurcharge = prices?.additionalFees?.highQuality || 0;
 
     const totalColorCost = colorPages * (colorCostPerPage + qualitySurcharge);
     const totalBwCost = bwPages * (bwCostPerPage + qualitySurcharge);
@@ -179,7 +226,6 @@ export const usePageSelection = (
     return (totalColorCost + totalBwCost) * copies;
   };
 
-  // Notify parent component about settings changes - DIPERBAIKI
   const notifyParent = (selections, copies, settings, cost) => {
     const selectedSelections = selections.filter((sel) => sel.selected);
     const colorPages = selectedSelections
@@ -197,14 +243,15 @@ export const usePageSelection = (
       copies,
       printSettings: settings,
       cost,
-      selectedPages, // ✅ Tambah ini
+      selectedPages,
     });
   };
 
-  // Handle page type change - PERLU DIPERBAIKI JUGA
   const handlePageTypeChange = (pageNumber, type) => {
+    if (!prices) return;
+
     const newSelections = selections.map((sel) =>
-      sel.page === pageNumber ? { ...sel, type } : sel
+      sel.page === pageNumber ? { ...sel, type } : sel,
     );
     setSelections(newSelections);
 
@@ -212,23 +259,24 @@ export const usePageSelection = (
     const cost = calculateCostWithSettings(
       selectedSelections,
       initialSettings.copies || 1,
-      printSettings
+      printSettings,
+      prices,
     );
 
     notifyParent(
       newSelections,
       initialSettings.copies || 1,
       printSettings,
-      cost
+      cost,
     );
   };
 
-  // Set all pages to same type - PERLU DIPERBAIKI JUGA
   const setAllPages = (type) => {
     const newSelections = selections.map((sel) => ({
       ...sel,
       type: type,
     }));
+    if (!prices) return;
 
     setSelections(newSelections);
 
@@ -236,29 +284,29 @@ export const usePageSelection = (
     const cost = calculateCostWithSettings(
       selectedSelections,
       initialSettings.copies || 1,
-      printSettings
+      printSettings,
+      prices,
     );
 
     notifyParent(
       newSelections,
       initialSettings.copies || 1,
       printSettings,
-      cost
+      cost,
     );
   };
 
-  // Handle render errors for PDF preview
   const handleRenderError = (pageNumber) => {
     setRenderErrors((prev) => ({ ...prev, [pageNumber]: true }));
   };
 
-  // Load more pages for pagination
   const loadMorePages = () => {
     setVisiblePages((prev) => Math.min(prev + 20, totalPages));
   };
 
-  // Handle print settings changes - PERLU DIPERBAIKI JUGA
   const handlePrintSettingsChange = (newSettings) => {
+    if (!prices) return;
+
     const updatedSettings = { ...printSettings, ...newSettings };
     setPrintSettings(updatedSettings);
 
@@ -266,37 +314,42 @@ export const usePageSelection = (
     const cost = calculateCostWithSettings(
       selectedSelections,
       initialSettings.copies || 1,
-      updatedSettings
+      updatedSettings,
+      prices,
     );
 
     notifyParent(
       selections,
       initialSettings.copies || 1,
       updatedSettings,
-      cost
+      cost,
     );
   };
 
-  // Handle copies change - PERLU DIPERBAIKI JUGA
   const handleCopiesChange = (copies) => {
+    if (!prices) return;
+
     const validatedCopies = Math.max(1, Math.min(50, copies || 1));
 
     const selectedSelections = selections.filter((sel) => sel.selected);
     const cost = calculateCostWithSettings(
       selectedSelections,
       validatedCopies,
-      printSettings
+      printSettings,
+      prices,
     );
 
     notifyParent(selections, validatedCopies, printSettings, cost);
   };
 
-  // Get current cost - PERLU DIPERBAIKI JUGA
-  const currentCost = calculateCostWithSettings(
-    selections.filter((sel) => sel.selected),
-    initialSettings.copies || 1,
-    printSettings
-  );
+  const currentCost = prices
+    ? calculateCostWithSettings(
+        selections.filter((sel) => sel.selected),
+        initialSettings.copies || 1,
+        printSettings,
+        prices,
+      )
+    : 0;
 
   return {
     // State

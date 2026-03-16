@@ -1,0 +1,213 @@
+DATABASE MONGODB
+1.
+// Buat collection users
+db.createCollection("users");
+
+// Buat unique index di phone
+db.users.createIndex({ "phone": 1 }, { unique: true });
+
+// Insert Super Admin
+db.users.insertOne({
+  userId: "user-001",
+  name: "Super Admin",
+  phone: "085111222333",
+  password: "$2b$10$YourHashedPasswordHere", // nanti diganti dengan hash bcrypt
+  role: "super_admin",
+  accessPrinters: [],
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// Insert Partner
+db.users.insertOne({
+  userId: "user-002",
+  name: "Budi Partner",
+  phone: "085111222444",
+  password: "$2b$10$YourHashedPasswordHere",
+  role: "partner",
+  accessPrinters: ["irc-print-perum-green-garden-jember"],
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// Insert Partner kedua
+db.users.insertOne({
+  userId: "user-003",
+  name: "Siti Partner",
+  phone: "085111222555",
+  password: "$2b$10$YourHashedPasswordHere",
+  role: "partner",
+  accessPrinters: ["irc-print-kaliurang"],
+  createdAt: new Date(),
+  updatedAt: new Date()
+});
+
+// Cek hasil
+db.users.find().pretty();
+
+2.
+// Buat collection paperRefills
+db.createCollection("paperRefills");
+
+// Buat indexes
+db.paperRefills.createIndex({ "printerId": 1, "createdAt": -1 });
+db.paperRefills.createIndex({ "status": 1 });
+db.paperRefills.createIndex({ "refillId": 1 }, { unique: true });
+
+// Insert dummy data
+db.paperRefills.insertMany([
+  {
+    refillId: "refill-20260301-001",
+    printerId: "irc-print-perum-green-garden-jember",
+    filledBy: "user-002",
+    filledByName: "Budi Partner",
+    sheetsAdded: 80,
+    paperCountBefore: 61,
+    paperCountAfter: 141,
+    profitShare: 30,
+    totalRevenue: 1600,
+    partnerProfit: 480,
+    status: "active",
+    paidAt: null,
+    jobsCovered: [
+      "print-1772376076511-n8jkf8yib",
+      "print-1772376076512-abcd1234"
+    ],
+    notes: "Isi ulang pertama",
+    createdAt: ISODate("2026-03-01T09:00:00Z"),
+    updatedAt: ISODate("2026-03-01T09:00:00Z")
+  },
+  {
+    refillId: "refill-20260228-001",
+    printerId: "irc-print-perum-green-garden-jember",
+    filledBy: "user-002",
+    filledByName: "Budi Partner",
+    sheetsAdded: 80,
+    paperCountBefore: 101,
+    paperCountAfter: 181,
+    profitShare: 30,
+    totalRevenue: 7500,
+    partnerProfit: 2250,
+    status: "active",
+    paidAt: null,
+    jobsCovered: [
+      "print-1772376076513-efgh5678",
+      "print-1772376076514-ijkl9012"
+    ],
+    createdAt: ISODate("2026-02-28T08:30:00Z"),
+    updatedAt: ISODate("2026-02-28T08:30:00Z")
+  },
+  {
+    refillId: "refill-20260227-001",
+    printerId: "irc-print-perum-green-garden-jember",
+    filledBy: "user-002",
+    filledByName: "Budi Partner",
+    sheetsAdded: 80,
+    paperCountBefore: 121,
+    paperCountAfter: 201,
+    profitShare: 30,
+    totalRevenue: 800,
+    partnerProfit: 240,
+    status: "paid",
+    paidAt: ISODate("2026-02-28T00:00:00Z"),
+    jobsCovered: [
+      "print-1772376076515-mnop3456"
+    ],
+    createdAt: ISODate("2026-02-27T10:15:00Z"),
+    updatedAt: ISODate("2026-02-28T00:00:00Z")
+  }
+]);
+
+// Cek hasil
+db.paperRefills.find().pretty();
+
+3.
+// Update semua printer
+db.printers.updateMany(
+  {},
+  {
+    $set: {
+      "profitSettings": {
+        "defaultShare": 20,
+        "partnerShare": 30,
+        "paperPackSize": 80
+      }
+    }
+  }
+);
+
+// Cek hasil
+db.printers.findOne({ "printerId": "irc-print-perum-green-garden-jember" });
+
+
+4.
+// Update semua print jobs
+db.printJobs.updateMany(
+  {},
+  {
+    $set: {
+      "refillId": null,
+      "partnerProfit": 0,
+      "profitShare": 20
+    }
+  }
+);
+
+// Update beberapa sample job dengan refillId
+db.printJobs.updateOne(
+  { "jobId": "print-1772376076511-n8jkf8yib" },
+  {
+    $set: {
+      "refillId": "refill-20260301-001",
+      "partnerProfit": 120,
+      "profitShare": 30
+    }
+  }
+);
+
+db.printJobs.updateOne(
+  { "jobId": "print-1772376076512-abcd1234" },
+  {
+    $set: {
+      "refillId": "refill-20260301-001",
+      "partnerProfit": 360,
+      "profitShare": 30
+    }
+  }
+);
+
+// Cek hasil
+db.printJobs.find().pretty();
+
+
+5.
+// Hitung jumlah dokumen di setiap collection
+db.users.countDocuments();
+db.paperRefills.countDocuments();
+db.printers.countDocuments();
+db.printJobs.countDocuments();
+
+// Lihat sample data
+db.users.find().pretty();
+db.paperRefills.find().pretty();
+db.printers.findOne({ "printerId": "irc-print-perum-green-garden-jember" });
+db.printJobs.findOne();
+
+
+6. 
+npm install jsonwebtoken bcrypt dotenv
+
+7. tambah di env
+PORT=3001
+JWT_SECRET=your-super-secret-jwt-key-change-this
+JWT_EXPIRES_IN=7d
+
+8. jalankan di mongoDB
+db.printers.updateMany(
+  {},
+  {
+    $set: {
+      pointDivider: 4000 // Default: Rp 4000 = 1 point
+    }
+  }
+);

@@ -1,3 +1,5 @@
+// app/api/users/route.js (Next.js API route for user management)
+
 import { NextResponse } from "next/server";
 
 const VPS_API_URL = process.env.VPS_API_URL;
@@ -5,22 +7,39 @@ const VPS_API_URL = process.env.VPS_API_URL;
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { phone, name } = body;
+    const { phone, name, printerId } = body; // Tambahkan printerId
 
     // Validate input
     if (!phone) {
       return NextResponse.json(
         { success: false, error: "Nomor HP diperlukan" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (phone.length < 10) {
       return NextResponse.json(
         { success: false, error: "Nomor HP harus minimal 10 digit" },
-        { status: 400 }
+        { status: 400 },
       );
     }
+
+    let pointDivider;
+    if (printerId) {
+      try {
+        const printerResponse = await fetch(
+          `${VPS_API_URL}/api/printers/${printerId}/point-divider`,
+        );
+        if (printerResponse.ok) {
+          const printerData = await printerResponse.json();
+          pointDivider = printerData.pointDivider;
+        }
+      } catch (error) {
+        console.error("Error fetching printer point divider:", error);
+      }
+    }
+
+    console.log("app/api/users/route.js - POST point divider:", pointDivider);
 
     // Create user melalui VPS API dengan initial points 0
     const response = await fetch(`${VPS_API_URL}/api/users/points`, {
@@ -33,6 +52,7 @@ export async function POST(request) {
         points: 0,
         amount: 0,
         orderId: `create-${Date.now()}`,
+        pointDivider: pointDivider,
         fileName: "user-creation.pdf",
       }),
     });
@@ -50,7 +70,7 @@ export async function POST(request) {
           },
           message: "User berhasil dibuat dengan 0 poin",
         },
-        { status: 201 }
+        { status: 201 },
       );
     } else {
       // Jika user sudah ada, anggap berhasil
@@ -61,7 +81,7 @@ export async function POST(request) {
             error: "User sudah terdaftar",
             user: result.user,
           },
-          { status: 409 }
+          { status: 409 },
         );
       }
       throw new Error(result.error || "Gagal membuat user di VPS");
@@ -70,7 +90,7 @@ export async function POST(request) {
     console.error("❌ Error creating user:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -102,7 +122,7 @@ export async function GET(request) {
       } else {
         return NextResponse.json(
           { success: false, error: "User tidak ditemukan" },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -114,13 +134,13 @@ export async function GET(request) {
         error:
           "Endpoint tidak tersedia. Gunakan /api/users/[phone]/points untuk user spesifik",
       },
-      { status: 501 }
+      { status: 501 },
     );
   } catch (error) {
     console.error("❌ Error getting users:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

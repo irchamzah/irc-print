@@ -1,11 +1,62 @@
+// app/printers/[printerId]/hooks/useUserManagement.js
 import { useState } from "react";
+import { useParams } from "next/navigation";
 
 export const useUserManagement = () => {
+  const params = useParams();
+  const printerId = params?.printerId;
+
   const [phoneNumber, setPhoneNumber] = useState("");
   const [userPoints, setUserPoints] = useState(null);
   const [checkingPoints, setCheckingPoints] = useState(false);
   const [refreshingPoints, setRefreshingPoints] = useState(false);
   const [userSession, setUserSession] = useState(null);
+
+  // Fungsi untuk mendapatkan point divider dari printer
+  const getPrinterPointDivider = async () => {
+    try {
+      // Coba ambil dari localStorage dulu (untuk caching)
+      const cached = localStorage.getItem(`printer_${printerId}_pointDivider`);
+
+      console.log(
+        "app/printers/[printerId]/hooks/useUserManagement.js - getPrinterPointDivider cached point divider:",
+        cached,
+      );
+
+      if (cached) {
+        const { value, timestamp } = JSON.parse(cached);
+        // Cache selama 1 jam
+        if (Date.now() - timestamp < 60 * 60 * 1000) {
+          return value;
+        }
+      }
+
+      // Ambil dari API
+      const response = await fetch(`/api/printers/${printerId}/point-divider`);
+      const data = await response.json();
+
+      const pointDivider = data.pointDivider;
+
+      console.log(
+        "app/printers/[printerId]/hooks/useUserManagement.js - getPrinterPointDivider fetched point divider:",
+        pointDivider,
+      );
+
+      // Simpan ke localStorage
+      localStorage.setItem(
+        `printer_${printerId}_pointDivider`,
+        JSON.stringify({
+          value: pointDivider,
+          timestamp: Date.now(),
+        }),
+      );
+
+      return pointDivider;
+    } catch (error) {
+      console.error("Error getting point divider:", error);
+      return null; // Default fallback
+    }
+  };
 
   const handlePhoneNumberChange = (newPhoneNumber) => {
     setPhoneNumber(newPhoneNumber);
@@ -39,7 +90,9 @@ export const useUserManagement = () => {
 
     setCheckingPoints(true);
     try {
-      const response = await fetch(`/api/users/${cleanPhone}/points`);
+      const response = await fetch(
+        `/api/users/${cleanPhone}/points?printerId=${printerId}`,
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -61,8 +114,8 @@ export const useUserManagement = () => {
 
           alert(
             `✅ Berhasil login! Anda memiliki ${result.points.toFixed(
-              2
-            )} point.`
+              2,
+            )} point.`,
           );
         } else if (result.user === null) {
           await createNewUserDirect(cleanPhone);
@@ -80,6 +133,14 @@ export const useUserManagement = () => {
 
   const createNewUserDirect = async (phone, isFallback = false) => {
     try {
+      // Dapatkan point divider dari printer
+      const pointDivider = await getPrinterPointDivider();
+
+      console.log(
+        "app/printers/[printerId]/hooks/useUserManagement.js - createNewUserDirect point divider:",
+        pointDivider,
+      );
+
       const createResponse = await fetch(`/api/users/points`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -88,11 +149,13 @@ export const useUserManagement = () => {
           points: 0,
           amount: 0,
           orderId: `init-${Date.now()}`,
+          pointDivider: pointDivider,
           fileName: "user-initialization.pdf",
         }),
       });
 
       if (createResponse.ok) {
+        const result = await createResponse.json();
         const userData = {
           phone: phone,
           points: 0,
@@ -155,5 +218,6 @@ export const useUserManagement = () => {
     checkUserPoints,
     logoutUser,
     createNewUserDirect,
+    getPrinterPointDivider, // Export untuk digunakan di komponen lain
   };
 };

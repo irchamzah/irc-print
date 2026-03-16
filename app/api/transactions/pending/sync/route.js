@@ -10,13 +10,13 @@ export async function GET(request) {
     if (!phoneNumber) {
       return NextResponse.json(
         { error: "Phone number is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // 1. Ambil pending transactions dari VPS
     const pendingResponse = await fetch(
-      `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`
+      `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`,
     );
 
     if (!pendingResponse.ok) {
@@ -41,9 +41,7 @@ export async function GET(request) {
       try {
         // Gunakan endpoint payment status yang sudah ada
         const statusResponse = await fetch(
-          `${
-            process.env.NEXTAUTH_URL || "http://localhost:3000"
-          }/api/payment/status?orderId=${transaction.orderId}`
+          `${VPS_API_URL}/api/payment/status?orderId=${transaction.orderId}`,
         );
 
         if (statusResponse.ok) {
@@ -71,7 +69,7 @@ export async function GET(request) {
                     status: "settlement",
                     midtransStatus: midtransStatus,
                   }),
-                }
+                },
               );
 
               if (updateResponse.ok) {
@@ -107,7 +105,7 @@ export async function GET(request) {
                     status: "expired",
                     midtransStatus: midtransStatus,
                   }),
-                }
+                },
               );
 
               if (updateResponse.ok) {
@@ -136,7 +134,7 @@ export async function GET(request) {
                     status: "cancelled",
                     midtransStatus: midtransStatus,
                   }),
-                }
+                },
               );
 
               if (updateResponse.ok) {
@@ -153,13 +151,13 @@ export async function GET(request) {
           }
         } else {
           console.warn(
-            `⚠️ [FRONTEND] Failed to check Midtrans status for ${transaction.orderId}`
+            `⚠️ [FRONTEND] Failed to check Midtrans status for ${transaction.orderId}`,
           );
         }
       } catch (error) {
         console.error(
           `❌ [FRONTEND] Error checking Midtrans for ${transaction.orderId}:`,
-          error.message
+          error.message,
         );
         // Continue dengan transaction berikutnya
       }
@@ -167,7 +165,7 @@ export async function GET(request) {
 
     // 3. Ambil ulang data terbaru dari VPS setelah update
     const finalResponse = await fetch(
-      `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`
+      `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`,
     );
 
     let finalPendingTransactions = [];
@@ -196,7 +194,7 @@ export async function GET(request) {
         error: error.message,
         pendingTransactions: [],
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

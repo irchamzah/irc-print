@@ -1,3 +1,4 @@
+// app/api/users/[phone]/points/route.js
 import { NextResponse } from "next/server";
 
 const VPS_API_URL = process.env.VPS_API_URL;
@@ -5,6 +6,8 @@ const VPS_API_URL = process.env.VPS_API_URL;
 export async function GET(request, { params }) {
   try {
     const { phone } = await params;
+    const { searchParams } = new URL(request.url);
+    const printerId = searchParams.get("printerId"); // Ambil printerId dari query
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -17,7 +20,7 @@ export async function GET(request, { params }) {
           "Content-Type": "application/json",
         },
         signal: controller.signal,
-      }
+      },
     );
 
     clearTimeout(timeoutId);
@@ -38,25 +41,25 @@ export async function GET(request, { params }) {
             isNewUser: false,
           });
         } else {
-          // User tidak ditemukan, buat user baru
-          return await createNewUser(phone);
+          // User tidak ditemukan, buat user baru dengan printerId
+          return await createNewUser(phone, printerId);
         }
       }
     }
 
     // Jika GET gagal, coba buat user baru langsung
-    return await createNewUser(phone);
+    return await createNewUser(phone, printerId);
   } catch (error) {
     if (error.name === "AbortError") {
       console.error("⏰ Request timeout");
       return NextResponse.json(
         { success: false, error: "Request timeout" },
-        { status: 408 }
+        { status: 408 },
       );
     }
     console.error(
       "❌ [FRONTEND] Error in /api/users/[phone]/points:",
-      error.message
+      error.message,
     );
 
     return NextResponse.json(
@@ -65,7 +68,7 @@ export async function GET(request, { params }) {
         error: "Service sedang tidak tersedia",
         details: "Silakan coba beberapa saat lagi",
       },
-      { status: 503 }
+      { status: 503 },
     );
   }
 }
@@ -76,6 +79,11 @@ export async function POST(request) {
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    console.log(
+      "app/api/users/[phone]/points/route.js - POST request body:",
+      body,
+    );
 
     const response = await fetch(`${VPS_API_URL}/api/users/points`, {
       method: "POST",
@@ -102,13 +110,13 @@ export async function POST(request) {
       console.error("⏰ Request timeout");
       return NextResponse.json(
         { success: false, error: "Request timeout" },
-        { status: 408 }
+        { status: 408 },
       );
     }
 
     console.error(
       "❌ [FRONTEND] Error in POST /api/users/points:",
-      error.message
+      error.message,
     );
     return NextResponse.json(
       {
@@ -116,14 +124,34 @@ export async function POST(request) {
         error: "Service sedang tidak tersedia",
         details: error.message,
       },
-      { status: 503 }
+      { status: 503 },
     );
   }
 }
 
 // Helper function untuk create new user
-async function createNewUser(phone) {
+async function createNewUser(phone, printerId) {
   try {
+    // Dapatkan point divider dari printer
+    let pointDivider;
+    if (printerId) {
+      try {
+        const printerResponse = await fetch(
+          `${VPS_API_URL}/api/printers/${printerId}/point-divider`,
+        );
+        if (printerResponse.ok) {
+          const printerData = await printerResponse.json();
+          pointDivider = printerData.pointDivider;
+        }
+      } catch (error) {
+        console.error("Error fetching printer point divider:", error);
+      }
+    }
+
+    console.log(
+      "app/api/users/[phone]/points/route.js - Creating new user pointDivider:",
+      pointDivider,
+    );
 
     const createResponse = await fetch(`${VPS_API_URL}/api/users/points`, {
       method: "POST",
@@ -135,6 +163,7 @@ async function createNewUser(phone) {
         points: 0,
         amount: 0,
         orderId: `init-${Date.now()}`,
+        pointDivider: pointDivider,
         fileName: "user-initialization.pdf",
       }),
     });

@@ -2,12 +2,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import CustomLink from "./CustomLink";
 
 export default function TopBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
   const menuItems = [
+    // { name: "Hub", href: "/hub", icon: "💻" },
     { name: "Beranda", href: "/", icon: "🏠" },
     { name: "Printers", href: "/printers", icon: "🖨️" },
     { name: "Tentang Kami", href: "/about", icon: "👥" },
@@ -23,19 +25,19 @@ export default function TopBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <CustomLink href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">IP</span>
             </div>
             <span className="text-xl font-bold text-gray-800 hidden sm:block">
               IRC Print
             </span>
-          </Link>
+          </CustomLink>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-1">
             {menuItems.map((item) => (
-              <Link
+              <CustomLink
                 key={item.name}
                 href={item.href}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -46,7 +48,7 @@ export default function TopBar() {
               >
                 <span className="text-base">{item.icon}</span>
                 <span>{item.name}</span>
-              </Link>
+              </CustomLink>
             ))}
           </div>
 
@@ -84,7 +86,7 @@ export default function TopBar() {
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-2">
             {menuItems.map((item) => (
-              <Link
+              <CustomLink
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsMenuOpen(false)}
@@ -96,7 +98,7 @@ export default function TopBar() {
               >
                 <span className="text-lg">{item.icon}</span>
                 <span>{item.name}</span>
-              </Link>
+              </CustomLink>
             ))}
           </div>
         )}

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
-const MIDTRANS_ENVIRONMENT = "production";
+const MIDTRANS_ENVIRONMENT = "sandbox";
 const MIDTRANS_CLIENT_KEY_SANDBOX = "Mid-client-wPXTxafwqLeUkNQD";
 const MIDTRANS_CLIENT_KEY_PRODUCTION = "Mid-client-S7IFqCPzEbOVyOrF";
 
 export const usePaymentModal = (
   isOpen,
   paymentData,
-  isRestoredTransaction = false
+  isRestoredTransaction = false,
 ) => {
   const [snapLoaded, setSnapLoaded] = useState(false);
   const [snapError, setSnapError] = useState(false);
@@ -34,7 +34,7 @@ export const usePaymentModal = (
 
       if (
         errorMessage.includes(
-          "snap.pay is not allowed to be called in this state"
+          "snap.pay is not allowed to be called in this state",
         )
       ) {
         return;
@@ -129,9 +129,7 @@ export const usePaymentModal = (
     script.onload = () => {
       setSnapLoaded(true);
       if (!isRestoredTransaction && !hasAttemptedOpenRef.current) {
-        setTimeout(() => {
-          // Auto-open will be handled by component
-        }, 1000);
+        setTimeout(() => {}, 1000);
       }
     };
 

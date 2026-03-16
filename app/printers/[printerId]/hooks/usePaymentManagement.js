@@ -1,4 +1,4 @@
-// app/printers/[printerId]/hooks/usePaymentManagement.js
+// app/printers/[printerId]/hooks/usePaymentManagement.js (FRONTEND Next.js)
 import { useState } from "react";
 
 const VPS_API_URL = process.env.VPS_API_URL;
@@ -6,7 +6,7 @@ const VPS_API_URL = process.env.VPS_API_URL;
 export const usePaymentManagement = (
   printerId,
   setAdvancedSettings,
-  setTotalPages
+  setTotalPages,
 ) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -23,7 +23,7 @@ export const usePaymentManagement = (
     advancedSettings,
     totalPages,
     userSession,
-    refreshAllData
+    refreshAllData,
   ) => {
     e.preventDefault();
 
@@ -36,7 +36,7 @@ export const usePaymentManagement = (
 
     if (finalCost <= 0) {
       alert(
-        "Biaya print belum dihitung. Silakan tunggu sebentar atau periksa pengaturan."
+        "Biaya print belum dihitung. Silakan tunggu sebentar atau periksa pengaturan.",
       );
       return;
     }
@@ -74,7 +74,7 @@ export const usePaymentManagement = (
 
       if (!paymentResult.success) {
         throw new Error(
-          paymentResult.error || "Gagal membuat transaksi payment"
+          paymentResult.error || "Gagal membuat transaksi payment",
         );
       }
 
@@ -131,19 +131,19 @@ export const usePaymentManagement = (
     file,
     userSession,
     paymentData,
-    refreshAllData
+    refreshAllData,
   ) => {
     try {
       setIsLoading(true);
 
       // Verify payment status
       const statusResponse = await fetch(
-        `/api/payment/status?orderId=${currentJobId}`
+        `/api/payment/status?orderId=${currentJobId}`,
       );
 
       if (!statusResponse.ok) {
         throw new Error(
-          `Payment status check failed: ${statusResponse.status}`
+          `Payment status check failed: ${statusResponse.status}`,
         );
       }
 
@@ -155,10 +155,19 @@ export const usePaymentManagement = (
         return; // Keluar tanpa error
       }
 
+      const pointDivider = parseInt(
+        localStorage.getItem("printerPointDivider"),
+      );
+
+      console.log(
+        "handlePaymentSuccess - pointDivider from localStorage:",
+        pointDivider,
+      );
+
       const totalPagesToPrint =
         (advancedSettings.colorPages.length + advancedSettings.bwPages.length) *
         advancedSettings.copies;
-      const pointsToAdd = (advancedSettings.cost / 4000).toFixed(2);
+      const pointsToAdd = (advancedSettings.cost / pointDivider).toFixed(2);
 
       const printPayload = {
         orderId: currentJobId,
@@ -169,6 +178,7 @@ export const usePaymentManagement = (
         totalCost: advancedSettings.cost,
         totalPages: totalPagesToPrint,
         pointsToAdd: pointsToAdd,
+        pointDivider: pointDivider,
         phoneNumber: userSession?.phone,
         isRestoredTransaction: paymentData?.isRestored || false,
       };
@@ -198,7 +208,7 @@ export const usePaymentManagement = (
         const errorText = await response.text();
         console.error("❌ Print API error response:", errorText);
         throw new Error(
-          `Print failed: ${response.status} ${response.statusText}`
+          `Print failed: ${response.status} ${response.statusText}`,
         );
       }
 
@@ -230,7 +240,7 @@ export const usePaymentManagement = (
             (userSession
               ? `🎉 +${pointsToAdd} point telah ditambahkan!\nPoint akan di-update otomatis...\n`
               : "") +
-            `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`
+            `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`,
         );
 
         setTimeout(() => {
@@ -270,7 +280,7 @@ export const usePaymentManagement = (
     setLoadingTransactions(true);
     try {
       const response = await fetch(
-        `/api/transactions/pending?phoneNumber=${userSession.phone}`
+        `/api/transactions/pending?phoneNumber=${userSession.phone}`,
       );
       const result = await response.json();
 
@@ -301,14 +311,14 @@ export const usePaymentManagement = (
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal: AbortSignal.timeout(10000),
-        }
+        },
       );
 
       if (!syncResponse.ok) {
         const errorText = await syncResponse.text();
         console.error(
           `❌ Payment status check failed: ${syncResponse.status}`,
-          errorText
+          errorText,
         );
         await openPaymentModalWithoutSync(transaction, userSession); // ✅ Pass userSession
         return;
@@ -353,7 +363,7 @@ export const usePaymentManagement = (
 
         if (!updatedTransaction.fileData?.hasFile) {
           alert(
-            "❌ File tidak tersimpan untuk transaksi ini. Silakan buat transaksi baru."
+            "❌ File tidak tersimpan untuk transaksi ini. Silakan buat transaksi baru.",
           );
           setCooldownTimers((prev) => ({
             ...prev,
@@ -389,7 +399,7 @@ export const usePaymentManagement = (
       console.error("Error continuing transaction:", error);
       if (error.name === "TimeoutError" || error.name === "AbortError") {
         alert(
-          "⏰ Timeout saat memeriksa status pembayaran. Membuka halaman pembayaran..."
+          "⏰ Timeout saat memeriksa status pembayaran. Membuka halaman pembayaran...",
         );
       } else {
         alert("❌ Gagal memulihkan transaksi: " + error.message);
@@ -402,7 +412,7 @@ export const usePaymentManagement = (
     // ✅ Tambahkan userSession parameter
     if (
       !window.confirm(
-        `Apakah Anda yakin ingin membatalkan transaksi ${transaction.orderId}?`
+        `Apakah Anda yakin ingin membatalkan transaksi ${transaction.orderId}?`,
       )
     ) {
       return;
@@ -440,11 +450,20 @@ export const usePaymentManagement = (
     try {
       setIsLoading(true);
 
+      const pointDivider = parseInt(
+        localStorage.getItem("printerPointDivider"),
+      );
+
+      console.log(
+        "processSuccessfulPayment - pointDivider from localStorage:",
+        pointDivider,
+      );
+
       const totalPagesToPrint =
         (transaction.settings.colorPages.length +
           transaction.settings.bwPages.length) *
         transaction.settings.copies;
-      const pointsToAdd = (transaction.cost / 4000).toFixed(2);
+      const pointsToAdd = (transaction.cost / pointDivider).toFixed(2);
 
       const printPayload = {
         orderId: transaction.orderId,
@@ -455,6 +474,7 @@ export const usePaymentManagement = (
         totalCost: transaction.cost,
         totalPages: totalPagesToPrint,
         pointsToAdd: pointsToAdd,
+        pointDivider: pointDivider,
         phoneNumber: userSession?.phone,
         isRestoredTransaction: true,
       };
@@ -469,7 +489,7 @@ export const usePaymentManagement = (
         const errorText = await response.text();
         console.error("❌ Print API error response:", errorText);
         throw new Error(
-          `Print failed: ${response.status} ${response.statusText}`
+          `Print failed: ${response.status} ${response.statusText}`,
         );
       }
 
@@ -493,7 +513,7 @@ export const usePaymentManagement = (
             (userSession
               ? `🎉 +${pointsToAdd} point telah ditambahkan!\n`
               : "") +
-            `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`
+            `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`,
         );
 
         setTimeout(() => {
@@ -514,7 +534,7 @@ export const usePaymentManagement = (
     // ✅ Add userSession parameter
     if (!transaction.fileData?.hasFile) {
       alert(
-        "❌ File tidak tersimpan untuk transaksi ini. Silakan buat transaksi baru."
+        "❌ File tidak tersimpan untuk transaksi ini. Silakan buat transaksi baru.",
       );
       setCooldownTimers((prev) => ({
         ...prev,

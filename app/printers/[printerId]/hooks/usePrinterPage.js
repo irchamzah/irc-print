@@ -9,11 +9,14 @@ import { useRefreshData } from "./useRefreshData";
 export const usePrinterPage = () => {
   const params = useParams();
   const printerId = params.printerId;
+
   const [printer, setPrinter] = useState(null);
+  const [prices, setPrices] = useState(null);
   const [isPrinterOffline, setIsPrinterOffline] = useState(false);
   const [isPaperInsufficient, setIsPaperInsufficient] = useState(false);
   const [availablePaper, setAvailablePaper] = useState(0);
   const [totalPagesNeeded, setTotalPagesNeeded] = useState(0);
+  const [pointDivider, setPointDivider] = useState(0);
 
   // Initialize all custom hooks
   const userManagement = useUserManagement();
@@ -21,7 +24,7 @@ export const usePrinterPage = () => {
   const paymentManagement = usePaymentManagement(
     printerId,
     fileManagement.setAdvancedSettings,
-    fileManagement.setTotalPages
+    fileManagement.setTotalPages,
   );
 
   const refreshData = useRefreshData(
@@ -31,10 +34,9 @@ export const usePrinterPage = () => {
     paymentManagement.setPendingTransactions,
     userManagement.setRefreshingPoints,
     paymentManagement.setRefreshingTransactions,
-    paymentManagement.setCooldownTimers
+    paymentManagement.setCooldownTimers,
   );
 
-  // Effects
   useEffect(() => {
     fetchPrinterDetails();
   }, [printerId]);
@@ -51,16 +53,13 @@ export const usePrinterPage = () => {
     userManagement.loadUserSession();
   }, []);
 
-  // ✅ EFFECT BARU: Check printer status berdasarkan data printer
   useEffect(() => {
     if (printer) {
-      // Cek status langsung dari data printer
       const isOffline = printer.status === "offline";
       setIsPrinterOffline(isOffline);
     }
   }, [printer]);
 
-  // ✅ EFFECT BARU: Validasi kertas setiap kali ada perubahan
   useEffect(() => {
     checkPaperAvailability();
   }, [
@@ -70,7 +69,6 @@ export const usePrinterPage = () => {
     paymentManagement.pendingTransactions,
   ]);
 
-  // Functions
   const fetchPrinterDetails = async () => {
     try {
       const response = await fetch(`/api/printers/${printerId}`);
@@ -78,22 +76,38 @@ export const usePrinterPage = () => {
 
       if (result.success) {
         setPrinter(result.printer);
+        setPointDivider(result.printer.pointDivider);
+
+        console.log(
+          "app/printers/[printerId]/hooks/usePrinterPage.js - fetchPrinterDetails:",
+          result.printer.pointDivider,
+        );
+
+        // ✅ SET PRICES DARI DATA PRINTER
+        if (result.printer?.pricing) {
+          setPrices(result.printer.pricing);
+          localStorage.setItem(
+            "printerPrices",
+            JSON.stringify(result.printer.pricing),
+          );
+          localStorage.setItem(
+            "printerPointDivider",
+            result.printer.pointDivider,
+          );
+        }
       }
     } catch (error) {
       console.error("Error fetching printer:", error);
-      // Jika error fetch, anggap offline untuk safety
       setIsPrinterOffline(true);
     }
   };
 
-  // ✅ FUNCTION BARU: Validasi ketersediaan kertas
   const checkPaperAvailability = () => {
     if (!printer) return;
 
     const availablePaperCount = printer.paperStatus?.paperCount || 0;
     setAvailablePaper(availablePaperCount);
 
-    // Hitung total halaman yang akan diprint
     let totalNeeded = 0;
 
     // 1. Hitung dari current transaction (jika ada file)
@@ -130,7 +144,7 @@ export const usePrinterPage = () => {
   const handleFileUpload = async (selectedFile) => {
     return fileManagement.handleFileUpload(
       selectedFile,
-      paymentManagement.setIsLoading
+      paymentManagement.setIsLoading,
     );
   };
 
@@ -139,7 +153,7 @@ export const usePrinterPage = () => {
     // ✅ TAMBAH VALIDASI USER SESSION
     if (!userManagement.userSession?.phone) {
       alert(
-        "❌ Harus Login terlebih dahulu. Masukkan nomor HP dan klik 'Login'."
+        "❌ Harus Login terlebih dahulu. Masukkan nomor HP dan klik 'Login'.",
       );
       return;
     }
@@ -152,7 +166,7 @@ export const usePrinterPage = () => {
     // ✅ TAMBAH VALIDASI KERTAS
     if (isPaperInsufficient) {
       alert(
-        `❌ Kertas tidak cukup! Butuh ${totalPagesNeeded} halaman, tersedia ${availablePaper} halaman.`
+        `❌ Kertas tidak cukup! Butuh ${totalPagesNeeded} halaman, tersedia ${availablePaper} halaman.`,
       );
       return;
     }
@@ -163,7 +177,7 @@ export const usePrinterPage = () => {
       fileManagement.advancedSettings,
       fileManagement.totalPages,
       userManagement.userSession,
-      refreshData.refreshAllData
+      refreshData.refreshAllData,
     );
   };
 
@@ -176,7 +190,7 @@ export const usePrinterPage = () => {
       fileManagement.file,
       userManagement.userSession,
       paymentManagement.paymentData,
-      refreshData.refreshAllData
+      refreshData.refreshAllData,
     );
   };
 
@@ -190,14 +204,14 @@ export const usePrinterPage = () => {
     // ✅ TAMBAH VALIDASI KERTAS
     if (isPaperInsufficient) {
       alert(
-        `❌ Kertas tidak cukup! Butuh ${totalPagesNeeded} halaman, tersedia ${availablePaper} halaman.`
+        `❌ Kertas tidak cukup! Butuh ${totalPagesNeeded} halaman, tersedia ${availablePaper} halaman.`,
       );
       return;
     }
 
     return paymentManagement.continuePendingTransaction(
       transaction,
-      userManagement.userSession
+      userManagement.userSession,
     );
   };
 
@@ -205,21 +219,23 @@ export const usePrinterPage = () => {
   const handleCancelPendingTransaction = async (transaction) => {
     return paymentManagement.cancelPendingTransaction(
       transaction,
-      userManagement.userSession
+      userManagement.userSession,
     );
   };
 
   return {
     // States from all hooks
     printer,
+    prices,
     isPrinterOffline,
-    isPaperInsufficient, // ✅ TAMBAH INI
-    availablePaper, // ✅ TAMBAH INI
-    totalPagesNeeded, // ✅ TAMBAH INI
+    isPaperInsufficient,
+    availablePaper,
+    totalPagesNeeded,
     ...userManagement,
     ...fileManagement,
     ...paymentManagement,
     isRefreshing: refreshData.isRefreshing,
+    pointDivider,
 
     // Setters
     setPrinter,
