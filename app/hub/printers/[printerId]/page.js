@@ -1,5 +1,5 @@
-// app/hub/printers/[printerId]/page.js
 "use client";
+import { Suspense } from "react";
 import { useState, useRef, useEffect } from "react";
 import {
   useParams,
@@ -21,8 +21,8 @@ import CustomLink from "@/app/components/CustomLink";
 import LoadingAnimation from "@/app/components/LoadingAnimation";
 import { ProofUploadModal } from "../../admin/paper-refills/components/ProofUploadModal";
 
-// 🥸PartnerHubPage /app/hub/printers/[printerId]/page.js TERPAKAI
-export default function PartnerHubPage() {
+// Komponen konten yang menggunakan useSearchParams
+function PartnerHubContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const printerId = params.printerId;
@@ -88,6 +88,29 @@ export default function PartnerHubPage() {
       setTargetSection(activeSection);
     }
   }, [searchParams, initialLoading]);
+
+  // Scroll to section when page loads with hash or pagination
+  useEffect(() => {
+    if (
+      !initialLoading &&
+      targetSection === "refills" &&
+      refillsSectionRef.current
+    ) {
+      refillsSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    } else if (
+      !initialLoading &&
+      targetSection === "jobs" &&
+      jobsSectionRef.current
+    ) {
+      jobsSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [initialLoading, targetSection]);
 
   const handleRefill = async () => {
     setRefillLoading(true);
@@ -189,21 +212,19 @@ export default function PartnerHubPage() {
 
   if (!user || !token) {
     return (
-      <HubLayout>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-gray-600 mb-4">
-              Silakan login untuk mengakses dashboard
-            </p>
-            <CustomLink
-              href="/hub/auth"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Login
-            </CustomLink>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">
+            Silakan login untuk mengakses dashboard
+          </p>
+          <CustomLink
+            href="/hub/auth"
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Login
+          </CustomLink>
         </div>
-      </HubLayout>
+      </div>
     );
   }
 
@@ -258,116 +279,134 @@ export default function PartnerHubPage() {
   }
 
   return (
-    <HubLayout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-4">
-          <div>
-            <p className="text-sm text-gray-500 mt-1">{printer.name}</p>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full">
-              ID: {printer.printerId.slice(0, 8)}...
-            </div>
-            <CustomLink
-              href="/hub/printers"
-              className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50"
-            >
-              ← Kembali
-            </CustomLink>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-sm text-gray-500 mt-1">{printer.name}</p>
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <PaperStatusCard
-            paperCount={printer.paperStatus?.paperCount || 0}
-            lastRefill={printer.paperStatus?.lastRefill}
-            onRefill={handleRefill}
-            loading={refillLoading}
-            showSuccess={showRefillSuccess}
-            formatDate={formatDate}
-          />
-
-          <DateRangeFilter
-            dateRange={dateRange}
-            onApplyFilter={handleApplyFilter}
-            onResetFilter={handleResetFilter}
-            formatDate={formatDate}
-          />
-
-          <ProfitOverview
-            totalRevenue={filteredTotalRevenue}
-            profitShare={profit.profitShare}
-            pendingPayout={profit.pendingPayout}
-            totalProfit={profit.partnerProfit}
-            formatRupiah={formatRupiah}
-            dateRange={dateRange}
-          />
-
-          {/* ✅ Tambahkan ref ke section refills */}
-          <div ref={refillsSectionRef}>
-            <PaperRefillHistory
-              refills={filteredRefills}
-              onViewRefill={handleViewRefill}
-              formatRupiah={formatRupiah}
-              formatShortDate={formatShortDate}
-              // Props pagination
-              currentPage={refillsCurrentPage}
-              totalPages={refillsTotalPages}
-              totalItems={refillsTotalItems}
-              pageSize={refillsPageSize}
-              section={"refills"}
-              currentJobsPage={jobsCurrentPage}
-              currentRefillsPage={refillsCurrentPage}
-              startDate={startDate}
-              endDate={endDate}
-              loading={loadingRefillsPage}
-            />
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full">
+            ID: {printer.printerId.slice(0, 8)}...
           </div>
-
-          {/* ✅ Tambahkan ref ke section jobs */}
-          <div ref={jobsSectionRef} className="mt-8">
-            <PrintJobsTable
-              jobs={filteredJobs}
-              refills={filteredRefills}
-              onViewRefill={handleViewRefill}
-              formatRupiah={formatRupiah}
-              formatDate={formatDate}
-              formatShortDate={formatShortDate}
-              // Props pagination
-              currentPage={jobsCurrentPage}
-              totalPages={jobsTotalPages}
-              totalItems={jobsTotalItems}
-              pageSize={jobsPageSize}
-              section={"jobs"}
-              currentJobsPage={jobsCurrentPage}
-              currentRefillsPage={refillsCurrentPage}
-              startDate={startDate}
-              endDate={endDate}
-              loading={loadingJobsPage}
-            />
-          </div>
-
-          <InfoCard profitShare={profit.profitShare} />
+          <CustomLink
+            href="/hub/printers"
+            className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+          >
+            ← Kembali
+          </CustomLink>
         </div>
-
-        <RefillDetailModal
-          isOpen={showRefillModal}
-          refill={selectedRefill}
-          jobs={selectedRefill?.jobs}
-          onClose={() => setShowRefillModal(false)}
-          onMarkAsPaid={user?.role === "super_admin" ? handleMarkAsPaid : null}
-          formatRupiah={formatRupiah}
-          formatDate={formatDate}
-          userRole={user?.role}
-        />
-        <ProofUploadModal
-          isOpen={showProofModal}
-          onClose={() => setShowProofModal(false)}
-          onConfirm={handleConfirmPayment}
-          refill={selectedRefill}
-          processing={processingId === selectedRefill?.refillId}
-          formatRupiah={formatRupiah}
-        />
       </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <PaperStatusCard
+          paperCount={printer.paperStatus?.paperCount || 0}
+          lastRefill={printer.paperStatus?.lastRefill}
+          onRefill={handleRefill}
+          loading={refillLoading}
+          showSuccess={showRefillSuccess}
+          formatDate={formatDate}
+        />
+
+        <DateRangeFilter
+          dateRange={dateRange}
+          onApplyFilter={handleApplyFilter}
+          onResetFilter={handleResetFilter}
+          formatDate={formatDate}
+        />
+
+        <ProfitOverview
+          totalRevenue={filteredTotalRevenue}
+          profitShare={profit.profitShare}
+          pendingPayout={profit.pendingPayout}
+          totalProfit={profit.partnerProfit}
+          formatRupiah={formatRupiah}
+          dateRange={dateRange}
+        />
+
+        {/* ✅ Tambahkan ref ke section refills */}
+        <div ref={refillsSectionRef}>
+          <PaperRefillHistory
+            refills={filteredRefills}
+            onViewRefill={handleViewRefill}
+            formatRupiah={formatRupiah}
+            formatShortDate={formatShortDate}
+            // Props pagination
+            currentPage={refillsCurrentPage}
+            totalPages={refillsTotalPages}
+            totalItems={refillsTotalItems}
+            pageSize={refillsPageSize}
+            section={"refills"}
+            currentJobsPage={jobsCurrentPage}
+            currentRefillsPage={refillsCurrentPage}
+            startDate={startDate}
+            endDate={endDate}
+            loading={loadingRefillsPage}
+          />
+        </div>
+
+        {/* ✅ Tambahkan ref ke section jobs */}
+        <div ref={jobsSectionRef} className="mt-8">
+          <PrintJobsTable
+            jobs={filteredJobs}
+            refills={filteredRefills}
+            onViewRefill={handleViewRefill}
+            formatRupiah={formatRupiah}
+            formatDate={formatDate}
+            formatShortDate={formatShortDate}
+            // Props pagination
+            currentPage={jobsCurrentPage}
+            totalPages={jobsTotalPages}
+            totalItems={jobsTotalItems}
+            pageSize={jobsPageSize}
+            section={"jobs"}
+            currentJobsPage={jobsCurrentPage}
+            currentRefillsPage={refillsCurrentPage}
+            startDate={startDate}
+            endDate={endDate}
+            loading={loadingJobsPage}
+          />
+        </div>
+
+        <InfoCard profitShare={profit.profitShare} />
+      </div>
+
+      <RefillDetailModal
+        isOpen={showRefillModal}
+        refill={selectedRefill}
+        jobs={selectedRefill?.jobs}
+        onClose={() => setShowRefillModal(false)}
+        onMarkAsPaid={user?.role === "super_admin" ? handleMarkAsPaid : null}
+        formatRupiah={formatRupiah}
+        formatDate={formatDate}
+        userRole={user?.role}
+      />
+      <ProofUploadModal
+        isOpen={showProofModal}
+        onClose={() => setShowProofModal(false)}
+        onConfirm={handleConfirmPayment}
+        refill={selectedRefill}
+        processing={processingId === selectedRefill?.refillId}
+        formatRupiah={formatRupiah}
+      />
+    </div>
+  );
+}
+
+// Loading fallback untuk Suspense
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+      <LoadingAnimation />
+    </div>
+  );
+}
+
+// Halaman utama dengan Suspense boundary
+export default function PartnerHubPage() {
+  return (
+    <HubLayout>
+      <Suspense fallback={<LoadingFallback />}>
+        <PartnerHubContent />
+      </Suspense>
     </HubLayout>
   );
 }
