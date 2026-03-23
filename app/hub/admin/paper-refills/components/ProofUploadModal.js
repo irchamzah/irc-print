@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 
+// ProofUploadModal TERPAKAI
 export const ProofUploadModal = ({
   isOpen,
   onClose,

@@ -1,7 +1,5 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import TopBar from "@/app/components/TopBar";
-import BottomBar from "./components/BottomBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -10,6 +8,7 @@ export const metadata = {
   description: "Print dokumen Anda dengan mudah dan cepat",
 };
 
+// RootLayout TERPAKAI
 export default function RootLayout({ children }) {
   return (
     <html lang="id">

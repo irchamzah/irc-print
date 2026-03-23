@@ -3,6 +3,7 @@
 
 import { Pagination } from "./Pagination";
 
+// 🥸PrintJobsTable /app/hub/printers/[printerId]/components/PrintJobsTable.js TERPAKAI
 export const PrintJobsTable = ({
   jobs,
   refills,

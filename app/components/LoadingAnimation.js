@@ -1,7 +1,8 @@
-// components/LoadingAnimation.js
+// app/components/LoadingAnimation.js
 "use client";
 import { useEffect, useState } from "react";
 
+// LoadingAnimation TERPAKAI
 export default function LoadingAnimation() {
   const [useApng, setUseApng] = useState(false);
 

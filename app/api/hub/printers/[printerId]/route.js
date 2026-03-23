@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// 🌐GET /app/api/hub/printers/[printerId]/route.js TERPAKAI
 export async function GET(request, { params }) {
   try {
-    const { printerId } = params;
     const token = request.headers.get("authorization")?.split(" ")[1];
 
     if (!token) {
@@ -14,8 +14,10 @@ export async function GET(request, { params }) {
       );
     }
 
+    const { printerId } = await params;
+
     const response = await fetch(
-      `${VPS_API_URL}/api/hub/printers/${printerId}`,
+      `${NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

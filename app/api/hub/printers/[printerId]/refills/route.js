@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// 🌐GET /app/api/hub/printers/[printerId]/refills/route.js TERPAKAI
 export async function GET(request, { params }) {
   try {
     const { printerId } = await params;
@@ -23,7 +24,7 @@ export async function GET(request, { params }) {
     }
 
     // Fetch dari VPS API
-    let url = `${VPS_API_URL}/api/hub/printers/${printerId}/refills?skip=${skip}&limit=${limit}`;
+    let url = `${NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}/refills?skip=${skip}&limit=${limit}`;
     if (startDate) url += `&startDate=${startDate}`;
     if (endDate) url += `&endDate=${endDate}`;
 
@@ -64,9 +65,10 @@ export async function GET(request, { params }) {
   }
 }
 
+// 🌐POST /app/api/hub/printers/[printerId]/refills/route.js TERPAKAI
 export async function POST(request, { params }) {
   try {
-    const { printerId } = params;
+    const { printerId } = await params;
     const token = request.headers.get("authorization")?.split(" ")[1];
     const body = await request.json();
 
@@ -78,7 +80,7 @@ export async function POST(request, { params }) {
     }
 
     const response = await fetch(
-      `${VPS_API_URL}/api/hub/printers/${printerId}/refills`,
+      `${NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}/refills`,
       {
         method: "POST",
         headers: {

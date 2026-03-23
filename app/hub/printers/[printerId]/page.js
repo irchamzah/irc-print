@@ -1,3 +1,4 @@
+// app/hub/printers/[printerId]/page.js
 "use client";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -7,7 +8,6 @@ import {
   usePathname,
 } from "next/navigation";
 import { useHubData } from "./hooks/useHubData";
-import { HubHeader } from "./components/HubHeader";
 import { DateRangeFilter } from "./components/DateRangeFilter";
 import { PaperStatusCard } from "./components/PaperStatusCard";
 import { ProfitOverview } from "./components/ProfitOverview";
@@ -19,8 +19,9 @@ import { useHubAuth } from "../../auth/hooks/useHubAuth";
 import { HubLayout } from "../../components/HubLayout";
 import CustomLink from "@/app/components/CustomLink";
 import LoadingAnimation from "@/app/components/LoadingAnimation";
-import { ProofUploadModal } from "../../admin/components/ProofUploadModal";
+import { ProofUploadModal } from "../../admin/paper-refills/components/ProofUploadModal";
 
+// 🥸PartnerHubPage /app/hub/printers/[printerId]/page.js TERPAKAI
 export default function PartnerHubPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -77,7 +78,6 @@ export default function PartnerHubPage() {
   const [showProofModal, setShowProofModal] = useState(false);
   const [processingId, setProcessingId] = useState(null);
 
-  // ✅ Effect untuk menentukan section target dari URL
   useEffect(() => {
     if (!initialLoading) {
       const activeSection = searchParams.get("refillsPage")
@@ -188,7 +188,23 @@ export default function PartnerHubPage() {
   };
 
   if (!user || !token) {
-    return <div>Please login first</div>;
+    return (
+      <HubLayout>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">
+              Silakan login untuk mengakses dashboard
+            </p>
+            <CustomLink
+              href="/hub/auth"
+              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Login
+            </CustomLink>
+          </div>
+        </div>
+      </HubLayout>
+    );
   }
 
   if (initialLoading) {

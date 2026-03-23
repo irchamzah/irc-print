@@ -4,7 +4,9 @@ import {
   getStatusColor,
   getStatusIcon,
 } from "../utils/printerUtils";
+import CustomLink from "@/app/components/CustomLink";
 
+// PrinterCard TERPAKAI
 export default function PrinterCard({ printer, userLocation }) {
   const router = useRouter();
 
@@ -30,10 +32,6 @@ export default function PrinterCard({ printer, userLocation }) {
     normalizedPrinter.location?.coordinates,
     userLocation,
   );
-
-  const handlePrinterSelect = () => {
-    router.push(`/printers/${normalizedPrinter.id}`);
-  };
 
   const handleMapsClick = (e) => {
     e.stopPropagation();
@@ -74,7 +72,7 @@ export default function PrinterCard({ printer, userLocation }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 overflow-hidden hover:scale-105 group">
+    <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 overflow-hidden group">
       {/* Status Header */}
       <div className={`${getStatusColor(normalizedPrinter.status)} px-4 py-3`}>
         <div className="flex items-center justify-between">
@@ -149,12 +147,12 @@ export default function PrinterCard({ printer, userLocation }) {
         </div>
 
         {/* Select Button */}
-        <button
-          onClick={handlePrinterSelect}
-          className="w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 group-hover:shadow-2xl cursor-pointer"
+        <CustomLink
+          href={`/printers/${normalizedPrinter.id}`}
+          className="flex itemcenter justify-center w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-none group-hover:shadow-2xl cursor-pointer "
         >
           Pilih Printer
-        </button>
+        </CustomLink>
       </div>
     </div>
   );

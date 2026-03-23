@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// 🌐POST /app/api/print/route.js TERPAKAI
 export async function POST(request) {
   try {
     const contentType = request.headers.get("content-type");
@@ -11,7 +12,7 @@ export async function POST(request) {
       // Handle restored transaction - forward as JSON to same endpoint
       const jsonData = await request.json();
 
-      const response = await fetch(`${VPS_API_URL}/api/print`, {
+      const response = await fetch(`${NEXT_PUBLIC_VPS_API_URL}/api/print`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -26,7 +27,7 @@ export async function POST(request) {
         const errorText = await response.text();
         console.error("❌ VPS error response:", errorText);
         throw new Error(
-          `VPS returned ${response.status}: ${response.statusText}`
+          `VPS returned ${response.status}: ${response.statusText}`,
         );
       }
 
@@ -40,7 +41,7 @@ export async function POST(request) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch(`${VPS_API_URL}/api/print`, {
+      const response = await fetch(`${NEXT_PUBLIC_VPS_API_URL}/api/print`, {
         method: "POST",
         body: formData,
         signal: controller.signal,
@@ -50,7 +51,7 @@ export async function POST(request) {
 
       if (!response.ok) {
         throw new Error(
-          `VPS returned ${response.status}: ${response.statusText}`
+          `VPS returned ${response.status}: ${response.statusText}`,
         );
       }
 
@@ -75,7 +76,7 @@ export async function POST(request) {
         details:
           "Pastikan VPS server sedang running dan endpoint /api/print tersedia",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

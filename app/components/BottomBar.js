@@ -1,5 +1,6 @@
 import { FaWhatsapp } from "react-icons/fa";
 
+// BottomBar TERPAKAI
 const BottomBar = () => {
   return (
     <footer className="bg-white border-t border-gray-200 mt-auto">

@@ -1,17 +1,18 @@
 import { useState } from "react";
 
+// useRefreshData TERPAKAI
 export const useRefreshData = (
   userSession,
   setUserPoints,
   setUserSession,
   setPendingTransactions,
-  setRefreshingPoints, // ✅ Ini setter untuk refreshingPoints
+  setRefreshingPoints,
   setRefreshingTransactions,
-  setCooldownTimers
+  setCooldownTimers,
 ) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Unified refresh function
+  // 🌐 refreshAllData /app/printers/[printerId]/hooks/useRefreshData.js TERPAKAI
   const refreshAllData = async () => {
     if (!userSession?.phone) {
       return;
@@ -46,7 +47,7 @@ export const useRefreshData = (
     }
   };
 
-  // Refresh user points only - PERBAIKI INI
+  // 🌐 refreshUserPoints /app/printers/[printerId]/hooks/useRefreshData.js TERPAKAI
   const refreshUserPoints = async () => {
     if (!userSession) return;
 
@@ -80,7 +81,7 @@ export const useRefreshData = (
     }
   };
 
-  // Refresh pending transactions only
+  // 🌐 refreshPendingTransactions /app/printers/[printerId]/hooks/useRefreshData.js TERPAKAI
   const refreshPendingTransactions = async () => {
     if (!userSession?.phone) return;
 
@@ -88,7 +89,7 @@ export const useRefreshData = (
       setRefreshingTransactions(true);
 
       const response = await fetch(
-        `/api/transactions/pending/sync?phoneNumber=${userSession.phone}`
+        `/api/transactions/pending/sync?phoneNumber=${userSession.phone}`,
       );
 
       if (!response.ok) {

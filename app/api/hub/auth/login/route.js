@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// 🌐 POST /api/hub/auth/login TERPAKAI
 export async function POST(request) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${VPS_API_URL}/api/hub/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${NEXT_PUBLIC_VPS_API_URL}/api/hub/auth/login`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+    );
 
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });

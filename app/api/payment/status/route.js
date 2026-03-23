@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 
+// 🌐GET /app/api/payment/status/route.js TERPAKAI
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -9,12 +10,12 @@ export async function GET(request) {
     if (!orderId) {
       return NextResponse.json(
         { error: "Order ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // VALIDASI ENVIRONMENT VARIABLES
-    const midtransEnvironment = process.env.MIDTRANS_ENVIRONMENT || "sandbox";
+    const midtransEnvironment = process.env.MIDTRANS_ENVIRONMENT;
     const isProduction = midtransEnvironment === "production";
 
     const serverKey = isProduction
@@ -30,7 +31,7 @@ export async function GET(request) {
           error: "Midtrans configuration error: Server key is missing",
           environment: midtransEnvironment,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -44,7 +45,7 @@ export async function GET(request) {
     const statusResponse = await Promise.race([
       snap.transaction.status(orderId),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Midtrans timeout")), 10000)
+        setTimeout(() => reject(new Error("Midtrans timeout")), 10000),
       ),
     ]);
 
@@ -61,7 +62,6 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("❌ Payment status check error:", error);
-    console.error("Environment:", process.env.MIDTRANS_ENVIRONMENT);
 
     // Berikan error message yang lebih spesifik
     let errorMessage = error.message;
@@ -75,9 +75,9 @@ export async function GET(request) {
       {
         success: false,
         error: errorMessage,
-        environment: process.env.MIDTRANS_ENVIRONMENT || "unknown",
+        environment: process.env.MIDTRANS_ENVIRONMENT,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

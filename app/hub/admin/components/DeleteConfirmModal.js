@@ -1,5 +1,6 @@
 "use client";
 
+// 🥸DeleteConfirmModal /app/hub/admin/components/DeleteConfirmModal.js TERPAKAI
 export const DeleteConfirmModal = ({
   isOpen,
   onClose,

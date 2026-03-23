@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 
+// useUserManagement TERPAKAI
 export const useUserManagement = () => {
   const params = useParams();
   const printerId = params?.printerId;
@@ -12,16 +13,10 @@ export const useUserManagement = () => {
   const [refreshingPoints, setRefreshingPoints] = useState(false);
   const [userSession, setUserSession] = useState(null);
 
-  // Fungsi untuk mendapatkan point divider dari printer
+  // 🌐 getPrinterPointDivider /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
   const getPrinterPointDivider = async () => {
     try {
-      // Coba ambil dari localStorage dulu (untuk caching)
       const cached = localStorage.getItem(`printer_${printerId}_pointDivider`);
-
-      console.log(
-        "app/printers/[printerId]/hooks/useUserManagement.js - getPrinterPointDivider cached point divider:",
-        cached,
-      );
 
       if (cached) {
         const { value, timestamp } = JSON.parse(cached);
@@ -36,11 +31,6 @@ export const useUserManagement = () => {
       const data = await response.json();
 
       const pointDivider = data.pointDivider;
-
-      console.log(
-        "app/printers/[printerId]/hooks/useUserManagement.js - getPrinterPointDivider fetched point divider:",
-        pointDivider,
-      );
 
       // Simpan ke localStorage
       localStorage.setItem(
@@ -58,10 +48,12 @@ export const useUserManagement = () => {
     }
   };
 
+  // 🌐 handlePhoneNumberChange /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
   const handlePhoneNumberChange = (newPhoneNumber) => {
     setPhoneNumber(newPhoneNumber);
   };
 
+  // 🌐 loadUserSession /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
   const loadUserSession = () => {
     const savedSession = localStorage.getItem("userSession");
     if (savedSession) {
@@ -76,6 +68,7 @@ export const useUserManagement = () => {
     }
   };
 
+  // 🌐 checkUserPoints /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
   const checkUserPoints = async () => {
     if (!phoneNumber.trim()) {
       alert("Silakan masukkan nomor HP terlebih dahulu");
@@ -131,15 +124,11 @@ export const useUserManagement = () => {
     }
   };
 
+  // 🌐 createNewUserDirect /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
   const createNewUserDirect = async (phone, isFallback = false) => {
     try {
       // Dapatkan point divider dari printer
       const pointDivider = await getPrinterPointDivider();
-
-      console.log(
-        "app/printers/[printerId]/hooks/useUserManagement.js - createNewUserDirect point divider:",
-        pointDivider,
-      );
 
       const createResponse = await fetch(`/api/users/points`, {
         method: "POST",
@@ -190,6 +179,7 @@ export const useUserManagement = () => {
     }
   };
 
+  // 🌐 logoutUser /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
   const logoutUser = () => {
     setUserSession(null);
     setUserPoints(null);

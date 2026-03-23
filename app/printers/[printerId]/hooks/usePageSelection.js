@@ -1,7 +1,7 @@
 // app/printers/[printerId]/hooks/usePageSelection.js
-import { PRINT_SETTINGS } from "@/lib/printConstants";
 import { useEffect, useState } from "react";
 
+// usePageSelection TERPAKAI
 export const usePageSelection = (
   totalPages,
   initialSettings,
@@ -56,6 +56,7 @@ export const usePageSelection = (
     }
   }, [totalPages, prices]);
 
+  // 🌐 handlePageSelection /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const handlePageSelection = (pageNumber, isSelected) => {
     if (!prices) return;
 
@@ -95,6 +96,7 @@ export const usePageSelection = (
     });
   };
 
+  // 🌐 selectAllPages /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const selectAllPages = () => {
     if (!prices) return;
 
@@ -126,6 +128,7 @@ export const usePageSelection = (
     });
   };
 
+  // 🌐 deselectAllPages /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const deselectAllPages = () => {
     const newSelections = selections.map((sel) => ({
       ...sel,
@@ -153,7 +156,7 @@ export const usePageSelection = (
     });
   };
 
-  // Fungsi untuk menghitung harga BW berdasarkan tier
+  // 🌐 calculateBwPriceFromTiers /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const calculateBwPriceFromTiers = (totalSheets, bwTiers) => {
     if (!bwTiers || bwTiers.length === 0) {
       return 500; // Default
@@ -173,22 +176,7 @@ export const usePageSelection = (
     return bwTiers[0]?.price || 500;
   };
 
-  const calculateBwPricePerPage = (bwPages, copies, prices) => {
-    const totalSheets = bwPages * copies;
-
-    // Gunakan tier pricing jika tersedia
-    if (prices?.bwTiers) {
-      return calculateBwPriceFromTiers(totalSheets, prices.bwTiers);
-    }
-
-    // Fallback ke logic lama jika tidak ada tier
-    const normalPrice = prices?.bwNormal || 500;
-    const discountPrice = prices?.bwDiscount || 200;
-    const discountThreshold = prices?.bwDiscountThreshold || 10;
-
-    return totalSheets >= discountThreshold ? discountPrice : normalPrice;
-  };
-
+  // 🌐 calculateCostWithSettings /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const calculateCostWithSettings = (selections, copies, settings, prices) => {
     if (!prices) return 0;
 
@@ -226,6 +214,7 @@ export const usePageSelection = (
     return (totalColorCost + totalBwCost) * copies;
   };
 
+  // 🌐 notifyParent /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const notifyParent = (selections, copies, settings, cost) => {
     const selectedSelections = selections.filter((sel) => sel.selected);
     const colorPages = selectedSelections
@@ -247,6 +236,7 @@ export const usePageSelection = (
     });
   };
 
+  // 🌐 handlePageTypeChange /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const handlePageTypeChange = (pageNumber, type) => {
     if (!prices) return;
 
@@ -271,6 +261,7 @@ export const usePageSelection = (
     );
   };
 
+  // 🌐 setAllPages /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const setAllPages = (type) => {
     const newSelections = selections.map((sel) => ({
       ...sel,
@@ -296,14 +287,17 @@ export const usePageSelection = (
     );
   };
 
+  // 🌐 handleRenderError /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const handleRenderError = (pageNumber) => {
     setRenderErrors((prev) => ({ ...prev, [pageNumber]: true }));
   };
 
+  // 🌐 loadMorePages /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const loadMorePages = () => {
     setVisiblePages((prev) => Math.min(prev + 20, totalPages));
   };
 
+  // 🌐 handlePrintSettingsChange /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const handlePrintSettingsChange = (newSettings) => {
     if (!prices) return;
 
@@ -326,6 +320,7 @@ export const usePageSelection = (
     );
   };
 
+  // 🌐 handleCopiesChange /app/printers/[printerId]/hooks/usePageSelection.js TERPAKAI
   const handleCopiesChange = (copies) => {
     if (!prices) return;
 

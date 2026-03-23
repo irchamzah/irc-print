@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 
+// usePrinters TERPAKAI
 export const usePrinters = () => {
   const [printers, setPrinters] = useState([]);
   const [loading, setLoading] = useState(true);

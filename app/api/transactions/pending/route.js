@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// GET /app/api/transactions/pending/route.js TERPAKAI
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -10,12 +11,12 @@ export async function GET(request) {
     if (!phoneNumber) {
       return NextResponse.json(
         { error: "Phone number is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const response = await fetch(
-      `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`
+      `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`,
     );
     const result = await response.json();
 
@@ -30,11 +31,14 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${VPS_API_URL}/api/transactions/pending`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const response = await fetch(
+      `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/pending`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
 
     const result = await response.json();
     return NextResponse.json(result);

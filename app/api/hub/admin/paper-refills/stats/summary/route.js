@@ -1,38 +1,50 @@
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL || "http://103.150.90.67:3002";
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
-// GET /api/hub/admin/paper-refills/stats/summary - Get refill statistics
+// GET /api/hub/admin/paper-refills/stats/summary - Get summary statistics
 export async function GET(request) {
   try {
-    const token = request.headers.get("authorization")?.split(" ")[1];
+    const { searchParams } = new URL(request.url);
 
-    if (!token) {
+    const vpsUrl = new URL(
+      `${NEXT_PUBLIC_VPS_API_URL}/api/hub/admin/paper-refills/stats/summary`,
+    );
+
+    // Forward all query params
+    searchParams.forEach((value, key) => {
+      vpsUrl.searchParams.set(key, value);
+    });
+
+    const response = await fetch(vpsUrl.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(request.headers.get("authorization") && {
+          Authorization: request.headers.get("authorization"),
+        }),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ VPS API error:", response.status, errorText);
       return NextResponse.json(
-        { success: false, error: "No token provided" },
-        { status: 401 },
+        { success: false, error: `VPS API error: ${response.status}` },
+        { status: response.status },
       );
     }
 
-    const response = await fetch(
-      `${VPS_API_URL}/api/hub/admin/paper-refills/stats/summary`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const result = await response.json();
+    return NextResponse.json(result);
   } catch (error) {
-    console.error(
-      "❌ Error in /api/hub/admin/paper-refills/stats/summary GET:",
-      error,
-    );
+    console.error("❌ Error fetching summary stats:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      {
+        success: false,
+        error: "Internal server error",
+        details: error.message,
+      },
       { status: 500 },
     );
   }

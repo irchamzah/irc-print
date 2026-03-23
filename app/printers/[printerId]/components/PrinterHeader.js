@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+// PrinterHeader TERPAKAI
 export const PrinterHeader = ({ printer }) => {
   if (!printer) return null;
 

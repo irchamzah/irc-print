@@ -1,5 +1,6 @@
 import { useHubAuth } from "@/app/hub/auth/hooks/useHubAuth";
 
+// 🥸ProfitOverview /app/hub/printers/[printerId]/components/ProfitOverview.js TERPAKAI
 export const ProfitOverview = ({
   totalRevenue,
   profitShare,

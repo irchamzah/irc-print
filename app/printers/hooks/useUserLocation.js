@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 
+// useUserLocation TERPAKAI
 export const useUserLocation = () => {
   const [userLocation, setUserLocation] = useState(null);
 
@@ -13,7 +14,7 @@ export const useUserLocation = () => {
               lng: position.coords.longitude,
             });
           },
-          (error) => {}
+          (error) => {},
         );
       }
     };

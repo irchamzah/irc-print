@@ -1,3 +1,4 @@
+// calculateDistance TERPAKAI
 export const calculateDistance = (printerLocation, userLocation) => {
   if (!userLocation || !printerLocation) {
     return null;
@@ -47,6 +48,7 @@ export const calculateDistance = (printerLocation, userLocation) => {
   return distance < 1 ? distance.toFixed(2) : distance.toFixed(1);
 };
 
+// getStatusIcon TERPAKAI
 export const getStatusIcon = (status) => {
   switch (status) {
     case "online":
@@ -60,6 +62,7 @@ export const getStatusIcon = (status) => {
   }
 };
 
+// getStatusColor TERPAKAI
 export const getStatusColor = (status) => {
   switch (status) {
     case "online":

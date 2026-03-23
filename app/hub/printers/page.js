@@ -8,8 +8,9 @@ import { HubLayout } from "../components/HubLayout";
 import CustomLink from "@/app/components/CustomLink";
 import LoadingAnimation from "@/app/components/LoadingAnimation";
 
-const API_URL = process.env.VPS_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// PrintersPage TERPAKAI
 export default function PrintersPage() {
   const { user, token, isAuthenticated } = useHubAuth();
   const [printers, setPrinters] = useState([]);

@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
-const MIDTRANS_ENVIRONMENT = "production";
-const MIDTRANS_CLIENT_KEY_SANDBOX = "Mid-client-wPXTxafwqLeUkNQD";
-const MIDTRANS_CLIENT_KEY_PRODUCTION = "Mid-client-S7IFqCPzEbOVyOrF";
+const NEXT_PUBLIC_MIDTRANS_ENVIRONMENT =
+  process.env.NEXT_PUBLIC_MIDTRANS_ENVIRONMENT;
+const NEXT_PUBLIC_MIDTRANS_CLIENT_KEY_SANDBOX =
+  process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY_SANDBOX;
+const NEXT_PUBLIC_MIDTRANS_CLIENT_KEY_PRODUCTION =
+  process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY_PRODUCTION;
 
+// usePaymentModal TERPAKAI
 export const usePaymentModal = (
   isOpen,
   paymentData,
@@ -48,7 +52,7 @@ export const usePaymentModal = (
     };
   }, []);
 
-  // Open Snap payment
+  // 🌐 openSnapPayment /app/printers/[printerId]/hooks/usePaymentModal.js TERPAKAI
   const openSnapPayment = (onSuccess, onError) => {
     if (isSnapOpenRef.current || !paymentData?.token || !window.snap) {
       return;
@@ -112,14 +116,14 @@ export const usePaymentModal = (
     }
 
     const snapUrl =
-      MIDTRANS_ENVIRONMENT === "production"
+      NEXT_PUBLIC_MIDTRANS_ENVIRONMENT === "production"
         ? "https://app.midtrans.com/snap/snap.js"
         : "https://app.sandbox.midtrans.com/snap/snap.js";
 
     const clientKey =
-      MIDTRANS_ENVIRONMENT === "production"
-        ? MIDTRANS_CLIENT_KEY_PRODUCTION
-        : MIDTRANS_CLIENT_KEY_SANDBOX;
+      NEXT_PUBLIC_MIDTRANS_ENVIRONMENT === "production"
+        ? NEXT_PUBLIC_MIDTRANS_CLIENT_KEY_PRODUCTION
+        : NEXT_PUBLIC_MIDTRANS_CLIENT_KEY_SANDBOX;
 
     const script = document.createElement("script");
     script.src = snapUrl;
@@ -161,37 +165,6 @@ export const usePaymentModal = (
     };
   }, [isOpen, paymentData?.token, isRestoredTransaction]);
 
-  // Cancel transaction
-  const cancelTransaction = async (userSession) => {
-    if (!paymentData?.orderId || !userSession?.phone) {
-      return { success: false, error: "Missing data" };
-    }
-
-    setIsCancelling(true);
-    try {
-      const response = await fetch("/api/transactions/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: paymentData.orderId,
-          phoneNumber: userSession.phone,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        return { success: true };
-      } else {
-        throw new Error(result.error || "Gagal membatalkan transaksi");
-      }
-    } catch (error) {
-      return { success: false, error: error.message };
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
   return {
     // State
     snapLoaded,
@@ -201,7 +174,6 @@ export const usePaymentModal = (
 
     // Actions
     openSnapPayment,
-    cancelTransaction,
 
     // Manual open control
     setHasAttemptedOpen: (value) => {

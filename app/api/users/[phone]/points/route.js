@@ -1,8 +1,9 @@
 // app/api/users/[phone]/points/route.js
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// GET /api/users/[phone]/points/route.js TERPAKAI
 export async function GET(request, { params }) {
   try {
     const { phone } = await params;
@@ -13,7 +14,7 @@ export async function GET(request, { params }) {
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const getResponse = await fetch(
-      `${VPS_API_URL}/api/users/${phone}/points`,
+      `${NEXT_PUBLIC_VPS_API_URL}/api/users/${phone}/points`,
       {
         method: "GET",
         headers: {
@@ -73,63 +74,62 @@ export async function GET(request, { params }) {
   }
 }
 
-export async function POST(request) {
-  try {
-    const body = await request.json();
+// export async function POST(request) {
+//   console.log("🌐POST /app/api/users/[phone]/points/route.js");
+//   try {
+//     const body = await request.json();
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+//     const controller = new AbortController();
+//     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    console.log(
-      "app/api/users/[phone]/points/route.js - POST request body:",
-      body,
-    );
+//     const response = await fetch(
+//       `${NEXT_PUBLIC_VPS_API_URL}/api/users/points`,
+//       {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify(body),
+//         signal: controller.signal,
+//       },
+//     );
 
-    const response = await fetch(`${VPS_API_URL}/api/users/points`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
+//     clearTimeout(timeoutId);
 
-    clearTimeout(timeoutId);
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error("❌ [FRONTEND] VPS POST failed:", errorText);
+//       throw new Error(`VPS API error: ${response.status}`);
+//     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ [FRONTEND] VPS POST failed:", errorText);
-      throw new Error(`VPS API error: ${response.status}`);
-    }
+//     const result = await response.json();
 
-    const result = await response.json();
+//     return NextResponse.json(result);
+//   } catch (error) {
+//     if (error.name === "AbortError") {
+//       console.error("⏰ Request timeout");
+//       return NextResponse.json(
+//         { success: false, error: "Request timeout" },
+//         { status: 408 },
+//       );
+//     }
 
-    return NextResponse.json(result);
-  } catch (error) {
-    if (error.name === "AbortError") {
-      console.error("⏰ Request timeout");
-      return NextResponse.json(
-        { success: false, error: "Request timeout" },
-        { status: 408 },
-      );
-    }
+//     console.error(
+//       "❌ [FRONTEND] Error in POST /api/users/points:",
+//       error.message,
+//     );
+//     return NextResponse.json(
+//       {
+//         success: false,
+//         error: "Service sedang tidak tersedia",
+//         details: error.message,
+//       },
+//       { status: 503 },
+//     );
+//   }
+// }
 
-    console.error(
-      "❌ [FRONTEND] Error in POST /api/users/points:",
-      error.message,
-    );
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Service sedang tidak tersedia",
-        details: error.message,
-      },
-      { status: 503 },
-    );
-  }
-}
-
-// Helper function untuk create new user
+// 🌐createNewUser /app/api/users/[phone]/points/route.js TERPAKAI
 async function createNewUser(phone, printerId) {
   try {
     // Dapatkan point divider dari printer
@@ -137,7 +137,7 @@ async function createNewUser(phone, printerId) {
     if (printerId) {
       try {
         const printerResponse = await fetch(
-          `${VPS_API_URL}/api/printers/${printerId}/point-divider`,
+          `${NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}/point-divider`,
         );
         if (printerResponse.ok) {
           const printerData = await printerResponse.json();
@@ -148,25 +148,23 @@ async function createNewUser(phone, printerId) {
       }
     }
 
-    console.log(
-      "app/api/users/[phone]/points/route.js - Creating new user pointDivider:",
-      pointDivider,
-    );
-
-    const createResponse = await fetch(`${VPS_API_URL}/api/users/points`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const createResponse = await fetch(
+      `${NEXT_PUBLIC_VPS_API_URL}/api/users/points`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: phone,
+          points: 0,
+          amount: 0,
+          orderId: `init-${Date.now()}`,
+          pointDivider: pointDivider,
+          fileName: "user-initialization.pdf",
+        }),
       },
-      body: JSON.stringify({
-        phone: phone,
-        points: 0,
-        amount: 0,
-        orderId: `init-${Date.now()}`,
-        pointDivider: pointDivider,
-        fileName: "user-initialization.pdf",
-      }),
-    });
+    );
 
     if (!createResponse.ok) {
       const errorText = await createResponse.text();

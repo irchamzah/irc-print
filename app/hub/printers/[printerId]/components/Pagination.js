@@ -4,6 +4,7 @@ import LoadingAnimation from "@/app/components/LoadingAnimation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Pagination TERPAKAI
 export const Pagination = ({
   currentPage,
   totalPages,

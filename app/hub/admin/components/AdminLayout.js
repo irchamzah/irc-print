@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useHubAuth } from "../../auth/hooks/useHubAuth"; // ✅ Import hook auth
 import CustomLink from "@/app/components/CustomLink";
 
+// 🥸AdminLayout /app/hub/admin/components/AdminLayout.js TERPAKAI
 export const AdminLayout = ({ children, tabs, activeTab }) => {
   const { user, logout } = useHubAuth(); // ✅ Ambil fungsi logout
   const [hasError, setHasError] = useState(false);

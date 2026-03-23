@@ -5,6 +5,7 @@ import Link from "next/link";
 import { HubLayout } from "./components/HubLayout";
 import CustomLink from "../components/CustomLink";
 
+// HubDashboard TERPAKAI
 export default function HubDashboard() {
   const { user, isAuthenticated, isSuperAdmin } = useHubAuth();
 

@@ -1,66 +1,65 @@
 "use client";
+import CustomLink from "@/app/components/CustomLink";
 import { useState } from "react";
 
-export const UsersTable = ({
-  users,
+// 🥸PrintersTable /app/hub/admin/components/PrintersTable.js TERPAKAI
+export const PrintersTable = ({
+  printers,
   onEdit,
   onDelete,
   onCreate,
   formatDate,
+  pagination,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone?.includes(searchTerm) ||
-      user.role?.includes(searchTerm),
+  const filteredPrinters = printers.filter(
+    (printer) =>
+      printer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      printer.printerId?.includes(searchTerm) ||
+      printer.location?.city?.includes(searchTerm),
   );
 
-  const getRoleBadge = (role) => {
-    if (role === "super_admin") {
+  const getStatusBadge = (status) => {
+    if (status === "online") {
       return (
-        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
-          Super Admin
-        </span>
-      );
-    }
-    if (role === "partner") {
-      return (
-        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-          {" "}
-          Partner
+        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+          Online
         </span>
       );
     }
     return (
       <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-        User
+        Offline
       </span>
     );
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white">
       {/* Header */}
       <div className="p-4 sm:p-6 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-800">
-              👥 Manajemen Users
+              🖨️ Daftar Printer
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Kelola semua users dan akses printer
-            </p>
+            {pagination.total > 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                Menampilkan {(pagination.page - 1) * pagination.limit + 1} -{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                dari {pagination.total} printer
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search Input - akan mengambil sisa ruang */}
+            {/* Search Input Container - akan mengambil sisa ruang */}
             <div className="flex-1 min-w-0">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Cari user..."
+                  placeholder="Cari printer..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -81,7 +80,7 @@ export const UsersTable = ({
               </div>
             </div>
 
-            {/* Tombol Tambah User - dengan teks berbeda di mobile/desktop */}
+            {/* Tombol Container */}
             <div className="flex-shrink-0">
               <button
                 onClick={onCreate}
@@ -100,7 +99,7 @@ export const UsersTable = ({
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                <span className="sm:inline">Tambah User</span>
+                <span className="sm:inline">Tambah Printer</span>
               </button>
             </div>
           </div>
@@ -113,19 +112,22 @@ export const UsersTable = ({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nama
+                Nama Printer
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Phone
+                ID
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
+                Lokasi
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Akses Printer
+                Status
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Dibuat
+                Sisa Kertas
+              </th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total Jobs
               </th>
               <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Aksi
@@ -133,29 +135,37 @@ export const UsersTable = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user.phone} className="hover:bg-gray-50">
+            {filteredPrinters.map((printer) => (
+              <tr key={printer.printerId} className="hover:bg-gray-50">
                 <td className="px-4 sm:px-6 py-3">
-                  <div className="text-sm font-medium text-gray-800">
-                    {user.name}
+                  <CustomLink
+                    href={`/hub/printers/${printer.printerId}`}
+                    className="text-sm font-medium text-blue-500 hover:underline"
+                  >
+                    {printer.name}
+                  </CustomLink>
+                </td>
+                <td className="px-4 sm:px-6 py-3">
+                  <div className="text-xs text-gray-500 font-mono">
+                    {printer.printerId}
                   </div>
                 </td>
                 <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
-                  {user.phone}
+                  {printer.location?.city || "-"}
                 </td>
-                <td className="px-4 sm:px-6 py-3">{getRoleBadge(user.role)}</td>
                 <td className="px-4 sm:px-6 py-3">
-                  <div className="text-sm text-gray-600">
-                    {user.accessPrinters?.length || 0} printer
-                  </div>
+                  {getStatusBadge(printer.status)}
                 </td>
                 <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
-                  {formatDate(user.createdAt)}
+                  {printer.paperStatus?.paperCount || 0} lembar
+                </td>
+                <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
+                  {printer.statistics?.totalJobs || 0}
                 </td>
                 <td className="px-4 sm:px-6 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => onEdit(user)}
+                      onClick={() => onEdit(printer)}
                       className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                       title="Edit"
                     >
@@ -174,7 +184,7 @@ export const UsersTable = ({
                       </svg>
                     </button>
                     <button
-                      onClick={() => onDelete(user)}
+                      onClick={() => onDelete(printer)}
                       className="p-1 text-red-600 hover:bg-red-50 rounded"
                       title="Hapus"
                     >
@@ -200,7 +210,7 @@ export const UsersTable = ({
         </table>
       </div>
 
-      {filteredUsers.length === 0 && (
+      {filteredPrinters.length === 0 && (
         <div className="text-center py-12">
           <svg
             className="w-16 h-16 text-gray-300 mx-auto mb-4"
@@ -212,10 +222,10 @@ export const UsersTable = ({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <p className="text-gray-500">Tidak ada user ditemukan</p>
+          <p className="text-gray-500">Tidak ada printer ditemukan</p>
         </div>
       )}
     </div>

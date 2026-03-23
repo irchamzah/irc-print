@@ -1,87 +1,45 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 import { useHubAuth } from "../../auth/hooks/useHubAuth";
-import { useAdminUsers } from "../hooks/useAdminUsers";
 import { AdminLayout } from "../components/AdminLayout";
-import { UsersTable } from "../components/UsersTable";
-import { UserFormModal } from "../components/UserFormModal";
+import { useAdminUsers } from "../hooks/useAdminUsers";
+import { UserFormModal } from "./components/UserFormModal";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
-import LoadingAnimation from "@/app/components/LoadingAnimation";
+import { StatsCards } from "./components/StatsCards";
+import { FilterSection } from "./components/FilterSection";
+import { SortSection } from "./components/SortSection";
+import { UsersTable } from "./components/UsersTable";
+import { Pagination } from "./components/Pagination";
 
+// Main Page
 export default function AdminUsersPage() {
-  const router = useRouter();
-  const { user, isSuperAdmin } = useHubAuth();
+  const { isSuperAdmin } = useHubAuth();
   const {
     users,
-    printers,
+    stats,
     loading,
-    error,
-    processing,
+    pagination,
+    filters,
+    applyFilters,
+    resetFilters,
+    changePage,
+    changeLimit,
+    changeSort,
     createUser,
     updateUser,
     deleteUser,
-    refreshUsers,
     formatDate,
+    formatRupiah,
+    formatPoints,
   } = useAdminUsers();
 
-  const [showModal, setShowModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [modalError, setModalError] = useState(null);
-
-  // Redirect if not super admin
-  useEffect(() => {
-    if (user && !isSuperAdmin()) {
-      router.push("/hub");
-    }
-  }, [user, isSuperAdmin, router]);
-
-  const handleCreate = () => {
-    setSelectedUser(null);
-    setModalError(null);
-    setShowModal(true);
-  };
-
-  const handleEdit = (user) => {
-    setSelectedUser(user);
-    setModalError(null);
-    setShowModal(true);
-  };
-
-  const handleDelete = (user) => {
-    setSelectedUser(user);
-    setShowDeleteModal(true);
-  };
-
-  const handleSubmit = async (formData) => {
-    setModalError(null);
-
-    let result;
-    if (selectedUser) {
-      result = await updateUser(selectedUser.userId, formData);
-    } else {
-      result = await createUser(formData);
-    }
-
-    if (result.success) {
-      setShowModal(false);
-    } else {
-      setModalError(result.error || "Gagal menyimpan data");
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedUser) return;
-
-    const result = await deleteUser(selectedUser.userId);
-
-    if (result.success) {
-      setShowDeleteModal(false);
-    } else {
-      alert("Gagal menghapus user: " + (result.error || "Unknown error"));
-    }
-  };
+  const [processing, setProcessing] = useState(false);
+  const [formError, setFormError] = useState(null);
+  const [printers, setPrinters] = useState([]);
+  const scrollRef = useRef(null);
 
   const tabs = [
     { id: "users", label: "👥 Users", href: "/hub/admin/users" },
@@ -93,77 +51,181 @@ export default function AdminUsersPage() {
     },
   ];
 
-  // Loading state
-  if (loading) {
-    return (
-      <AdminLayout tabs={tabs} activeTab="users">
-        <LoadingAnimation />
-      </AdminLayout>
-    );
-  }
+  const saveScrollPosition = () => {
+    if (scrollRef.current) {
+      const position = scrollRef.current.scrollTop;
+      sessionStorage.setItem("paperRefillsScrollPos", position);
+    }
+  };
 
-  // Error state
-  if (error) {
-    return (
-      <AdminLayout tabs={tabs} activeTab="users">
-        <div className="bg-white rounded-xl border border-red-200 p-8 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-red-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
-            Gagal Memuat Data
-          </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={refreshUsers}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Coba Lagi
-          </button>
-        </div>
-      </AdminLayout>
-    );
-  }
+  // Fetch printers for partner access
+  useEffect(() => {
+    const fetchPrinters = async () => {
+      try {
+        const response = await fetch(`/api/hub/admin/printers?limit=1000`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("hubToken")}`,
+          },
+        });
+        const data = await response.json();
+        if (data.success) {
+          setPrinters(data.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching printers:", error);
+      }
+    };
+    fetchPrinters();
+  }, []);
+
+  const handleApplyFilters = async (newFilters) => {
+    saveScrollPosition();
+    await applyFilters(newFilters);
+  };
+
+  const handleResetFilters = async () => {
+    saveScrollPosition();
+    await resetFilters();
+  };
+
+  const handleAddNew = () => {
+    setSelectedUser(null);
+    setFormError(null);
+    setShowFormModal(true);
+  };
+
+  const handleEdit = (user) => {
+    setSelectedUser(user);
+    setFormError(null);
+    setShowFormModal(true);
+  };
+
+  const handleDelete = (user) => {
+    setSelectedUser(user);
+    setShowDeleteModal(true);
+  };
+
+  const handleSubmit = async (formData) => {
+    setProcessing(true);
+    setFormError(null);
+
+    let result;
+    if (selectedUser) {
+      result = await updateUser(selectedUser.userId, formData);
+    } else {
+      result = await createUser(formData);
+    }
+
+    if (result.success) {
+      setShowFormModal(false);
+      setSelectedUser(null);
+    } else {
+      setFormError(result.error || "Terjadi kesalahan");
+    }
+    setProcessing(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedUser) return;
+    setProcessing(true);
+    const result = await deleteUser(selectedUser.userId);
+    if (result.success) {
+      setShowDeleteModal(false);
+      setSelectedUser(null);
+    } else {
+      alert("Gagal menghapus user: " + result.error);
+    }
+    setProcessing(false);
+  };
+
+  if (!isSuperAdmin()) return null;
 
   return (
     <AdminLayout tabs={tabs} activeTab="users">
-      <UsersTable
-        users={users}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCreate={handleCreate}
-        formatDate={formatDate}
-      />
+      <div
+        ref={scrollRef}
+        className="overflow-y-auto"
+        style={{ maxHeight: "calc(100vh - 200px)" }}
+      >
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              👥 Manajemen User
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Kelola semua user, partner, dan admin
+            </p>
+          </div>
+        </div>
 
-      <UserFormModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={handleSubmit}
-        user={selectedUser}
-        printers={printers}
-        error={modalError}
-        processing={processing}
-      />
+        {/* Stats Cards */}
+        <StatsCards stats={stats} loading={loading} />
 
-      <DeleteConfirmModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteConfirm}
-        itemName={selectedUser?.name}
-        processing={processing}
-      />
+        {/* Filter Section */}
+        <FilterSection
+          filters={filters}
+          onApply={handleApplyFilters}
+          onReset={handleResetFilters}
+          isLoading={loading}
+        />
+
+        {/* Sort Section */}
+        <SortSection
+          currentSort={{ sortBy: filters.sortBy, sortOrder: filters.sortOrder }}
+          onSortChange={changeSort}
+        />
+
+        {/* Table */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p className="text-gray-500">Memuat data...</p>
+            </div>
+          ) : (
+            <>
+              <UsersTable
+                users={users}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onCreate={handleAddNew}
+                formatDate={formatDate}
+                formatRupiah={formatRupiah}
+                formatPoints={formatPoints}
+                pagination={pagination}
+              />
+              {pagination.totalPages > 0 && (
+                <Pagination
+                  pagination={pagination}
+                  onPageChange={changePage}
+                  onLimitChange={changeLimit}
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Modals */}
+        <UserFormModal
+          isOpen={showFormModal}
+          onClose={() => setShowFormModal(false)}
+          onSubmit={handleSubmit}
+          user={selectedUser}
+          printers={printers}
+          error={formError}
+          processing={processing}
+        />
+
+        <DeleteConfirmModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleConfirmDelete}
+          title="Hapus User"
+          message={`Apakah Anda yakin ingin menghapus user "${selectedUser?.name}"?`}
+          processing={processing}
+        />
+      </div>
     </AdminLayout>
   );
 }

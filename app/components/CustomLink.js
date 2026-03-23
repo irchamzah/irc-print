@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LoadingAnimation from "./LoadingAnimation";
 
+// CustomLink TERPAKAI
 export default function CustomLink({ href, children, className, ...props }) {
   const [isNavigating, setIsNavigating] = useState(false);
   const currentPath = usePathname();

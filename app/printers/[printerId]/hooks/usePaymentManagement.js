@@ -1,8 +1,9 @@
 // app/printers/[printerId]/hooks/usePaymentManagement.js (FRONTEND Next.js)
 import { useState } from "react";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// usePaymentManagement TERPAKAI
 export const usePaymentManagement = (
   printerId,
   setAdvancedSettings,
@@ -17,6 +18,7 @@ export const usePaymentManagement = (
   const [refreshingTransactions, setRefreshingTransactions] = useState(false);
   const [cooldownTimers, setCooldownTimers] = useState({});
 
+  // 🌐 handleSubmit /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const handleSubmit = async (
     e,
     file,
@@ -124,6 +126,7 @@ export const usePaymentManagement = (
     }
   };
 
+  // 🌐 handlePaymentSuccess /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const handlePaymentSuccess = async (
     currentJobId,
     advancedSettings,
@@ -157,11 +160,6 @@ export const usePaymentManagement = (
 
       const pointDivider = parseInt(
         localStorage.getItem("printerPointDivider"),
-      );
-
-      console.log(
-        "handlePaymentSuccess - pointDivider from localStorage:",
-        pointDivider,
       );
 
       const totalPagesToPrint =
@@ -267,6 +265,7 @@ export const usePaymentManagement = (
     }
   };
 
+  // 🌐 handlePaymentCancelled /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const handlePaymentCancelled = (refreshAllData) => {
     setShowPaymentModal(false);
     setPaymentData(null);
@@ -274,6 +273,7 @@ export const usePaymentManagement = (
     refreshAllData();
   };
 
+  // 🌐 fetchPendingTransactions /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const fetchPendingTransactions = async (userSession) => {
     if (!userSession?.phone) return;
 
@@ -296,6 +296,7 @@ export const usePaymentManagement = (
     }
   };
 
+  // 🌐 continuePendingTransaction /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const continuePendingTransaction = async (transaction, userSession) => {
     // ✅ Add userSession parameter
     if (cooldownTimers[transaction.orderId]) {
@@ -320,7 +321,7 @@ export const usePaymentManagement = (
           `❌ Payment status check failed: ${syncResponse.status}`,
           errorText,
         );
-        await openPaymentModalWithoutSync(transaction, userSession); // ✅ Pass userSession
+        await openPaymentModalWithoutSync(transaction, userSession);
         return;
       }
 
@@ -336,16 +337,19 @@ export const usePaymentManagement = (
         };
 
         if (latestStatus === "settlement") {
-          await fetch(`${VPS_API_URL}/api/transactions/update-status`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderId: transaction.orderId,
-              phoneNumber: userSession.phone,
-              status: "settlement",
-              midtransStatus: latestStatus,
-            }),
-          });
+          await fetch(
+            `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: transaction.orderId,
+                phoneNumber: userSession.phone,
+                status: "settlement",
+                midtransStatus: latestStatus,
+              }),
+            },
+          );
 
           setAdvancedSettings(updatedTransaction.settings);
           setTotalPages(updatedTransaction.fileData.pages);
@@ -372,8 +376,8 @@ export const usePaymentManagement = (
           return;
         }
 
-        setAdvancedSettings(updatedTransaction.settings); // ✅ Now available
-        setTotalPages(updatedTransaction.fileData.pages); // ✅ Now available
+        setAdvancedSettings(updatedTransaction.settings);
+        setTotalPages(updatedTransaction.fileData.pages);
         setCurrentJobId(updatedTransaction.orderId);
 
         setPaymentData({
@@ -404,10 +408,11 @@ export const usePaymentManagement = (
       } else {
         alert("❌ Gagal memulihkan transaksi: " + error.message);
       }
-      await openPaymentModalWithoutSync(transaction, userSession); // ✅ Pass userSession
+      await openPaymentModalWithoutSync(transaction, userSession);
     }
   };
 
+  // 🌐 cancelPendingTransaction /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const cancelPendingTransaction = async (transaction, userSession) => {
     // ✅ Tambahkan userSession parameter
     if (
@@ -424,7 +429,7 @@ export const usePaymentManagement = (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: transaction.orderId,
-          phoneNumber: userSession.phone, // ✅ Gunakan parameter
+          phoneNumber: userSession.phone,
         }),
       });
 
@@ -445,6 +450,8 @@ export const usePaymentManagement = (
       alert("❌ Gagal membatalkan transaksi: " + error.message);
     }
   };
+
+  // 🌐 processSuccessfulPayment /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const processSuccessfulPayment = async (transaction, userSession) => {
     // ✅ Add userSession parameter
     try {
@@ -452,11 +459,6 @@ export const usePaymentManagement = (
 
       const pointDivider = parseInt(
         localStorage.getItem("printerPointDivider"),
-      );
-
-      console.log(
-        "processSuccessfulPayment - pointDivider from localStorage:",
-        pointDivider,
       );
 
       const totalPagesToPrint =
@@ -516,9 +518,9 @@ export const usePaymentManagement = (
             `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`,
         );
 
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        // setTimeout(() => {
+        //   window.location.reload();
+        // }, 2000);
       } else {
         throw new Error(result.error || "Gagal mengirim print job");
       }
@@ -530,8 +532,8 @@ export const usePaymentManagement = (
     }
   };
 
+  // 🌐 openPaymentModalWithoutSync /app/printers/[printerId]/hooks/usePaymentManagement.js TERPAKAI
   const openPaymentModalWithoutSync = async (transaction, userSession) => {
-    // ✅ Add userSession parameter
     if (!transaction.fileData?.hasFile) {
       alert(
         "❌ File tidak tersimpan untuk transaksi ini. Silakan buat transaksi baru.",
@@ -543,8 +545,8 @@ export const usePaymentManagement = (
       return;
     }
 
-    setAdvancedSettings(transaction.settings); // ✅ Now available
-    setTotalPages(transaction.fileData.pages); // ✅ Now available
+    setAdvancedSettings(transaction.settings);
+    setTotalPages(transaction.fileData.pages);
     setCurrentJobId(transaction.orderId);
 
     setPaymentData({

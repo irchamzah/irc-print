@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-const VPS_API_URL = process.env.VPS_API_URL;
+const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
+// GET /api/transactions/pending/sync TERPAKAI
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -16,7 +17,7 @@ export async function GET(request) {
 
     // 1. Ambil pending transactions dari VPS
     const pendingResponse = await fetch(
-      `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`,
+      `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`,
     );
 
     if (!pendingResponse.ok) {
@@ -41,7 +42,7 @@ export async function GET(request) {
       try {
         // Gunakan endpoint payment status yang sudah ada
         const statusResponse = await fetch(
-          `${VPS_API_URL}/api/payment/status?orderId=${transaction.orderId}`,
+          `${NEXT_PUBLIC_VPS_API_URL}/api/payment/status?orderId=${transaction.orderId}`,
         );
 
         if (statusResponse.ok) {
@@ -59,7 +60,7 @@ export async function GET(request) {
             ) {
               // Update status di VPS
               const updateResponse = await fetch(
-                `${VPS_API_URL}/api/transactions/update-status`,
+                `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -95,7 +96,7 @@ export async function GET(request) {
             ) {
               // Update status expired di VPS
               const updateResponse = await fetch(
-                `${VPS_API_URL}/api/transactions/update-status`,
+                `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -124,7 +125,7 @@ export async function GET(request) {
             ) {
               // Update status cancelled di VPS
               const updateResponse = await fetch(
-                `${VPS_API_URL}/api/transactions/update-status`,
+                `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -165,7 +166,7 @@ export async function GET(request) {
 
     // 3. Ambil ulang data terbaru dari VPS setelah update
     const finalResponse = await fetch(
-      `${VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`,
+      `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/pending?phoneNumber=${phoneNumber}`,
     );
 
     let finalPendingTransactions = [];

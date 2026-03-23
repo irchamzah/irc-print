@@ -1,6 +1,7 @@
 import BottomBar from "../components/BottomBar";
 import TopBar from "../components/TopBar";
 
+// AboutPage TERPAKAI
 export default function AboutPage() {
   return (
     <>
