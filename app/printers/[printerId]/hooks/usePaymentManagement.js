@@ -315,6 +315,8 @@ export const usePaymentManagement = (
         },
       );
 
+      console.log(`SYNC RESPONSE >>>>>>>`, syncResponse);
+
       if (!syncResponse.ok) {
         const errorText = await syncResponse.text();
         console.error(
@@ -518,9 +520,9 @@ export const usePaymentManagement = (
             `Job ID: ${result.jobId}\n\nHalaman akan direfresh...`,
         );
 
-        // setTimeout(() => {
-        //   window.location.reload();
-        // }, 2000);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
         throw new Error(result.error || "Gagal mengirim print job");
       }

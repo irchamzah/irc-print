@@ -1,4 +1,4 @@
-// app/printers/[printerId]/components/PaymentModal.js
+// app/printers/[printerId]/components/PaymentModal.js (FRONTEND Next.js)
 
 "use client";
 import { usePaymentModal } from "../hooks/usePaymentModal";

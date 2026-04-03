@@ -1,3 +1,4 @@
+// app/api/payment/status/route.js (FRONTEND Next.js)
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 
@@ -48,6 +49,7 @@ export async function GET(request) {
         setTimeout(() => reject(new Error("Midtrans timeout")), 10000),
       ),
     ]);
+    console.log("✅ Midtrans status response:", statusResponse);
 
     return NextResponse.json({
       success: true,
