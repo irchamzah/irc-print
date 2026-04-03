@@ -1,3 +1,4 @@
+// app/api/transactions/pending/route.js (Frontend Next.js API Route)
 import { NextResponse } from "next/server";
 
 const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
