@@ -315,8 +315,6 @@ export const usePaymentManagement = (
         },
       );
 
-      console.log(`SYNC RESPONSE >>>>>>>`, syncResponse);
-
       if (!syncResponse.ok) {
         const errorText = await syncResponse.text();
         console.error(
@@ -339,19 +337,17 @@ export const usePaymentManagement = (
         };
 
         if (latestStatus === "settlement") {
-          await fetch(
-            `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                orderId: transaction.orderId,
-                phoneNumber: userSession.phone,
-                status: "settlement",
-                midtransStatus: latestStatus,
-              }),
-            },
-          );
+          // TANDAI
+          await fetch(`/api/transactions/update-status`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: transaction.orderId,
+              phoneNumber: userSession.phone,
+              status: "settlement",
+              midtransStatus: latestStatus,
+            }),
+          });
 
           setAdvancedSettings(updatedTransaction.settings);
           setTotalPages(updatedTransaction.fileData.pages);
