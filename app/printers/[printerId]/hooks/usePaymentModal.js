@@ -1,3 +1,4 @@
+// app/printers/[printerId]/hooks/usePaymentModal.js
 import { useEffect, useRef, useState } from "react";
 
 const NEXT_PUBLIC_MIDTRANS_ENVIRONMENT =

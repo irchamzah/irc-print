@@ -15,7 +15,7 @@ export async function GET(request) {
     }
 
     // VALIDASI ENVIRONMENT VARIABLES
-    const midtransEnvironment = process.env.MIDTRANS_ENVIRONMENT;
+    const midtransEnvironment = process.env.NEXT_PUBLIC_MIDTRANS_ENVIRONMENT;
     const isProduction = midtransEnvironment === "production";
 
     const serverKey = isProduction
@@ -75,7 +75,7 @@ export async function GET(request) {
       {
         success: false,
         error: errorMessage,
-        environment: process.env.MIDTRANS_ENVIRONMENT,
+        environment: process.env.NEXT_PUBLIC_MIDTRANS_ENVIRONMENT,
       },
       { status: 500 },
     );

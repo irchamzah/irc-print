@@ -1,3 +1,4 @@
+// app/api/payment/route.js
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 
@@ -9,7 +10,8 @@ export async function POST(request) {
     // --- LOGGING #1: Payload dari Klien ---
 
     // Determine environment and keys
-    const isProduction = process.env.MIDTRANS_ENVIRONMENT === "production";
+    const isProduction =
+      process.env.NEXT_PUBLIC_MIDTRANS_ENVIRONMENT === "production";
     const serverKey = isProduction
       ? process.env.MIDTRANS_SERVER_KEY_PRODUCTION
       : process.env.MIDTRANS_SERVER_KEY_SANDBOX;
@@ -58,7 +60,7 @@ export async function POST(request) {
       token: transaction.token,
       redirect_url: transaction.redirect_url,
       qr_code: transaction.qr_code, // QRIS code URL
-      environment: process.env.MIDTRANS_ENVIRONMENT,
+      environment: process.env.NEXT_PUBLIC_MIDTRANS_ENVIRONMENT,
     });
   } catch (error) {
     console.error("Payment error detail:", error);
