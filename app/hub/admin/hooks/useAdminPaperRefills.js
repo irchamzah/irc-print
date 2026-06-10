@@ -1,3 +1,4 @@
+// app/hub/admin/hooks/useAdminPaperRefills.js SUDAH DIUPDATE
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,10 +12,16 @@ export const useAdminPaperRefills = () => {
   // State
   const [refills, setRefills] = useState([]);
   const [stats, setStats] = useState({
-    total: { totalRefills: 0, totalRevenue: 0, totalProfit: 0, totalSheets: 0 },
-    pending: { count: 0, amount: 0 },
-    completed: { count: 0, amount: 0 },
-    paid: { count: 0, amount: 0 },
+    total: {
+      totalRefills: 0,
+      totalRevenue: 0,
+      totalPartnerProfit: 0, // ✅ Ganti totalProfit → totalPartnerProfit
+      totalPlatformProfit: 0, // ✅ Tambah totalPlatformProfit
+      totalSheets: 0,
+    },
+    active: { count: 0, partnerAmount: 0, platformAmount: 0 }, // ✅ Ganti pending → active
+    completed: { count: 0, partnerAmount: 0, platformAmount: 0 },
+    paid: { count: 0, partnerAmount: 0, platformAmount: 0 },
   });
   const [filterOptions, setFilterOptions] = useState({
     printers: [],
@@ -23,7 +30,7 @@ export const useAdminPaperRefills = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filter state - DIPERLUAS
+  // Filter state - UPDATED
   const [filters, setFilters] = useState({
     status: searchParams.get("status") || "",
     printerId: searchParams.get("printerId") || "",
@@ -34,8 +41,8 @@ export const useAdminPaperRefills = () => {
     endCompletedDate: searchParams.get("endCompletedDate") || "",
     startPaidDate: searchParams.get("startPaidDate") || "",
     endPaidDate: searchParams.get("endPaidDate") || "",
-    minProfit: searchParams.get("minProfit") || "",
-    maxProfit: searchParams.get("maxProfit") || "",
+    minPartnerProfit: searchParams.get("minPartnerProfit") || "", // ✅ Ganti minProfit
+    maxPartnerProfit: searchParams.get("maxPartnerProfit") || "", // ✅ Ganti maxProfit
     minSheets: searchParams.get("minSheets") || "",
     maxSheets: searchParams.get("maxSheets") || "",
     sortBy: searchParams.get("sortBy") || "createdAt",
@@ -77,6 +84,23 @@ export const useAdminPaperRefills = () => {
     return new Intl.NumberFormat("id-ID").format(num || 0);
   };
 
+  // Helper: Get status badge
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "active":
+        return { class: "bg-green-100 text-green-700", text: "Aktif" };
+      case "completed":
+        return { class: "bg-blue-100 text-blue-700", text: "Selesai" };
+      case "paid":
+        return { class: "bg-purple-100 text-purple-700", text: "Dibayar" };
+      default:
+        return {
+          class: "bg-gray-100 text-gray-700",
+          text: status || "Unknown",
+        };
+    }
+  };
+
   // Helper: Build query params
   const buildQueryParams = useCallback(
     (extraParams = {}) => {
@@ -96,8 +120,10 @@ export const useAdminPaperRefills = () => {
       if (filters.startPaidDate)
         params.set("startPaidDate", filters.startPaidDate);
       if (filters.endPaidDate) params.set("endPaidDate", filters.endPaidDate);
-      if (filters.minProfit) params.set("minProfit", filters.minProfit);
-      if (filters.maxProfit) params.set("maxProfit", filters.maxProfit);
+      if (filters.minPartnerProfit)
+        params.set("minPartnerProfit", filters.minPartnerProfit);
+      if (filters.maxPartnerProfit)
+        params.set("maxPartnerProfit", filters.maxPartnerProfit);
       if (filters.minSheets) params.set("minSheets", filters.minSheets);
       if (filters.maxSheets) params.set("maxSheets", filters.maxSheets);
       if (filters.sortBy) params.set("sortBy", filters.sortBy);
@@ -129,8 +155,10 @@ export const useAdminPaperRefills = () => {
         params.set("startPaidDate", newFilters.startPaidDate);
       if (newFilters.endPaidDate)
         params.set("endPaidDate", newFilters.endPaidDate);
-      if (newFilters.minProfit) params.set("minProfit", newFilters.minProfit);
-      if (newFilters.maxProfit) params.set("maxProfit", newFilters.maxProfit);
+      if (newFilters.minPartnerProfit)
+        params.set("minPartnerProfit", newFilters.minPartnerProfit);
+      if (newFilters.maxPartnerProfit)
+        params.set("maxPartnerProfit", newFilters.maxPartnerProfit);
       if (newFilters.minSheets) params.set("minSheets", newFilters.minSheets);
       if (newFilters.maxSheets) params.set("maxSheets", newFilters.maxSheets);
       if (newFilters.sortBy) params.set("sortBy", newFilters.sortBy);
@@ -164,12 +192,13 @@ export const useAdminPaperRefills = () => {
             total: {
               totalRefills: 0,
               totalRevenue: 0,
-              totalProfit: 0,
+              totalPartnerProfit: 0,
+              totalPlatformProfit: 0,
               totalSheets: 0,
             },
-            pending: { count: 0, amount: 0 },
-            completed: { count: 0, amount: 0 },
-            paid: { count: 0, amount: 0 },
+            active: { count: 0, partnerAmount: 0, platformAmount: 0 },
+            completed: { count: 0, partnerAmount: 0, platformAmount: 0 },
+            paid: { count: 0, partnerAmount: 0, platformAmount: 0 },
           },
         );
         setFilterOptions(data.filters || { printers: [], partners: [] });
@@ -194,12 +223,8 @@ export const useAdminPaperRefills = () => {
       setFilters(updatedFilters);
       setPagination((prev) => ({ ...prev, page: 1 }));
       updateUrl(1, pagination.limit, updatedFilters);
-
-      // setTimeout(() => {
-      //   fetchRefills();
-      // }, 100);
     },
-    [filters, pagination.limit, updateUrl, fetchRefills],
+    [filters, pagination.limit, updateUrl],
   );
 
   // Reset all filters
@@ -214,8 +239,8 @@ export const useAdminPaperRefills = () => {
       endCompletedDate: "",
       startPaidDate: "",
       endPaidDate: "",
-      minProfit: "",
-      maxProfit: "",
+      minPartnerProfit: "",
+      maxPartnerProfit: "",
       minSheets: "",
       maxSheets: "",
       sortBy: "createdAt",
@@ -224,10 +249,6 @@ export const useAdminPaperRefills = () => {
     setFilters(emptyFilters);
     setPagination((prev) => ({ ...prev, page: 1 }));
     updateUrl(1, pagination.limit, emptyFilters);
-
-    // setTimeout(() => {
-    //   fetchRefills();
-    // }, 100);
   }, [pagination.limit, updateUrl]);
 
   // Change page
@@ -257,30 +278,29 @@ export const useAdminPaperRefills = () => {
       setFilters(updatedFilters);
       setPagination((prev) => ({ ...prev, page: 1 }));
       updateUrl(1, pagination.limit, updatedFilters);
-
-      // setTimeout(() => {
-      //   fetchRefills();
-      // }, 100);
     },
     [filters, pagination.limit, updateUrl],
   );
 
-  // Mark refill as paid
+  // Di dalam useAdminPaperRefills.js, update fungsi markAsPaid
   const markAsPaid = useCallback(
-    async (refillId, formData) => {
+    async (paperRefillId) => {
       try {
         const response = await fetch(
-          `/api/hub/admin/paper-refills/${refillId}/pay`,
+          `/api/hub/admin/paper-refills/${paperRefillId}/pay`,
           {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({}), // ✅ Kosongkan body, tanpa formData
           },
         );
 
         const result = await response.json();
         if (result.success) {
-          await fetchRefills(); // Refresh setelah update
+          await fetchRefills();
         }
         return result;
       } catch (err) {
@@ -298,10 +318,9 @@ export const useAdminPaperRefills = () => {
     }
   }, [token]);
 
-  // ✅ FIX: Re-fetch when filters change
+  // Re-fetch when filters change
   useEffect(() => {
     if (token && filters) {
-      // Gunakan debounce untuk menghindari multiple fetch
       const timeoutId = setTimeout(() => {
         fetchRefills();
       }, 300);
@@ -323,14 +342,10 @@ export const useAdminPaperRefills = () => {
     changeLimit,
     changeSort,
     markAsPaid,
-    formatDate: (date) =>
-      date ? new Date(date).toLocaleDateString("id-ID") : "-",
-    formatRupiah: (amount) =>
-      new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-      }).format(amount || 0),
-    formatNumber: (num) => new Intl.NumberFormat("id-ID").format(num || 0),
+    getStatusBadge,
+    formatDate,
+    formatRupiah,
+    formatNumber,
     refresh: fetchRefills,
   };
 };

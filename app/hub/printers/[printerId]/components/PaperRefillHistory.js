@@ -1,9 +1,9 @@
-// app/hub/printers/[printerId]/components/PaperRefillHistory.js
 "use client";
 
 import { Pagination } from "./Pagination";
+import { useHubAuth } from "../../../auth/hooks/useHubAuth";
 
-// 🥸PaperRefillHistory /app/hub/printers/[printerId]/components/PaperRefillHistory.js TERPAKAI
+// PaperRefillHistory - UPDATED dengan struktur baru (tanpa upload proof)
 export const PaperRefillHistory = ({
   refills,
   onViewRefill,
@@ -20,6 +20,9 @@ export const PaperRefillHistory = ({
   endDate,
   loading,
 }) => {
+  const { role } = useHubAuth();
+  const isAdmin = role === "admin" || role === "super_admin";
+
   // Fungsi untuk mendapatkan badge role
   const getRoleBadge = (role) => {
     if (role === "super_admin") {
@@ -36,6 +39,26 @@ export const PaperRefillHistory = ({
               strokeLinejoin="round"
               strokeWidth={2}
               d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          Admin
+        </span>
+      );
+    }
+    if (role === "admin") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+          <svg
+            className="w-3 h-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
             />
           </svg>
           Admin
@@ -91,13 +114,6 @@ export const PaperRefillHistory = ({
     }
   };
 
-  const handleViewProof = (refill) => {
-    if (refill.transferProof) {
-      const imageUrl = `${process.env.NEXT_PUBLIC_VPS_API_URL}${refill.transferProof.url}`;
-      window.open(imageUrl, "_blank");
-    }
-  };
-
   const filterRefillsByDateRange = (refills) => {
     if (!startDate || !endDate) return refills;
 
@@ -145,7 +161,7 @@ export const PaperRefillHistory = ({
       <div className="divide-y divide-gray-200">
         {visibleRefills.map((refill) => (
           <div
-            key={refill.refillId}
+            key={refill.paperRefillId || refill.refillId}
             onClick={() => onViewRefill(refill)}
             className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
           >
@@ -182,13 +198,10 @@ export const PaperRefillHistory = ({
                       {formatShortDate(refill.createdAt)}
                     </p>
                     {getRoleBadge(refill.filledByRole)}
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                      {refill.profitShare}% share
-                    </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {refill.filledByName} • {refill.sheetsAdded} lembar •{" "}
-                    {refill.jobsCovered?.length || 0} print jobs
+                    {refill.printJobIds?.length || 0} print jobs
                   </p>
                 </div>
               </div>
@@ -201,11 +214,19 @@ export const PaperRefillHistory = ({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500">Profit</p>
+                  <p className="text-xs text-gray-500">Profit Partner</p>
                   <p className="text-sm font-medium text-green-600">
                     {formatRupiah(refill.partnerProfit)}
                   </p>
                 </div>
+                {isAdmin && (
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Profit Platform</p>
+                    <p className="text-sm font-medium text-blue-600">
+                      {formatRupiah(refill.platformProfit)}
+                    </p>
+                  </div>
+                )}
                 <div className="w-20">
                   {getStatusBadge(refill.status)}
                   <br />
@@ -215,38 +236,7 @@ export const PaperRefillHistory = ({
                     </span>
                   )}
                 </div>
-                {refill.transferProof ? (
-                  <button
-                    onClick={() => handleViewProof(refill)}
-                    className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                    title="Lihat Bukti"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
-                    Lihat
-                  </button>
-                ) : refill.status === "paid" ? (
-                  <span className="text-xs text-gray-400">Tidak ada</span>
-                ) : (
-                  <span className="text-xs text-gray-400">-</span>
-                )}
+                {/* ✅ HAPUS bagian transferProof - bukti transfer ditangani di withdrawal */}
               </div>
             </div>
 
@@ -287,38 +277,6 @@ export const PaperRefillHistory = ({
                   </div>
                 </div>
                 {getStatusBadge(refill.status)}
-                {refill.transferProof ? (
-                  <button
-                    onClick={() => handleViewProof(refill)}
-                    className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                    title="Lihat Bukti"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
-                    Lihat
-                  </button>
-                ) : refill.status === "paid" ? (
-                  <span className="text-xs text-gray-400">Tidak ada</span>
-                ) : (
-                  <span className="text-xs text-gray-400">-</span>
-                )}
               </div>
 
               <div className="ml-10 space-y-2">
@@ -326,27 +284,31 @@ export const PaperRefillHistory = ({
                   {refill.filledByName} • {refill.sheetsAdded} lembar
                 </p>
 
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className={`grid ${isAdmin ? "grid-cols-3" : "grid-cols-2"} gap-2 text-center text-xs`}>
                   <div className="bg-gray-50 p-2 rounded-lg">
                     <p className="text-gray-500">Jobs</p>
                     <p className="font-medium text-gray-800">
-                      {refill.jobsCovered?.length || 0}
+                      {refill.printJobIds?.length || 0}
                     </p>
                   </div>
                   <div className="bg-gray-50 p-2 rounded-lg">
-                    <p className="text-gray-500">Profit</p>
+                    <p className="text-gray-500">Profit Partner</p>
                     <p className="font-medium text-green-600">
                       {formatRupiah(refill.partnerProfit)
                         .replace("Rp", "")
                         .trim()}
                     </p>
                   </div>
-                  <div className="bg-gray-50 p-2 rounded-lg">
-                    <p className="text-gray-500">Share</p>
-                    <p className="font-medium text-gray-800">
-                      {refill.profitShare}%
-                    </p>
-                  </div>
+                  {isAdmin && (
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <p className="text-gray-500">Profit Platform</p>
+                      <p className="font-medium text-blue-600">
+                        {formatRupiah(refill.platformProfit)
+                          .replace("Rp", "")
+                          .trim()}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-100">
@@ -366,7 +328,7 @@ export const PaperRefillHistory = ({
           </div>
         ))}
 
-        {/* ✅ Pagination Component */}
+        {/* Pagination Component */}
         {totalPages > 1 && (
           <div className="border-t border-gray-200">
             <Pagination

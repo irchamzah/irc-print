@@ -11,7 +11,7 @@ export default function AdminRedirect() {
 
   useEffect(() => {
     if (user?.role === "super_admin") {
-      router.push("/hub/admin/users");
+      router.push("/hub/admin/paper-refills");
     } else {
       router.push("/hub");
     }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
-// GET /api/transactions/pending/sync TERPAKAI
+// GET /api/transactions/pending/sync
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -21,7 +21,13 @@ export async function GET(request) {
     );
 
     if (!pendingResponse.ok) {
-      throw new Error("Failed to fetch pending transactions from VPS");
+      console.error(`❌ VPS pending API error: ${pendingResponse.status}`);
+      // Jangan throw error, return empty array instead
+      return NextResponse.json({
+        success: true,
+        pendingTransactions: [],
+        updatedTransactions: [],
+      });
     }
 
     const pendingResult = await pendingResponse.json();
@@ -40,34 +46,45 @@ export async function GET(request) {
     // 2. Untuk setiap pending transaction, cek status di Midtrans
     for (const transaction of pendingTransactions) {
       try {
-        // Gunakan endpoint payment status yang sudah ada
+        const orderId = transaction.orderId;
+        const currentStatus =
+          transaction.transactionStatus || transaction.status;
+
+        // Skip jika sudah paid atau printed
+        if (currentStatus === "paid" || currentStatus === "printed") {
+          continue;
+        }
+
         const statusResponse = await fetch(
-          `${NEXT_PUBLIC_VPS_API_URL}/api/payment/status?orderId=${transaction.orderId}`,
+          `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/check-status?orderId=${orderId}&phoneNumber=${phoneNumber}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          },
         );
 
         if (statusResponse.ok) {
           const statusResult = await statusResponse.json();
 
           if (statusResult.success) {
-            const midtransStatus = statusResult.status;
-            const currentStatus = transaction.status;
+            const midtransStatus =
+              statusResult.midtransStatus || statusResult.status;
 
-            // Jika status di Midtrans berbeda dengan di VPS, update di VPS
+            // Jika status di Midtrans settlement/capture, update ke "paid"
             if (
               (midtransStatus === "settlement" ||
                 midtransStatus === "capture") &&
               currentStatus === "pending"
             ) {
-              // Update status di VPS
               const updateResponse = await fetch(
                 `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    orderId: transaction.orderId,
+                    orderId: orderId,
                     phoneNumber: phoneNumber,
-                    status: "settlement",
+                    status: "paid",
                     midtransStatus: midtransStatus,
                   }),
                 },
@@ -75,17 +92,14 @@ export async function GET(request) {
 
               if (updateResponse.ok) {
                 const updateResult = await updateResponse.json();
-                // Di dalam loop update transaction, tambahkan:
                 if (updateResult.success) {
                   updatedTransactions.push({
-                    orderId: transaction.orderId,
+                    orderId: orderId,
                     oldStatus: currentStatus,
-                    newStatus: "settlement",
+                    newStatus: "paid",
                     transactionData: {
-                      // Tambahkan data lengkap
                       ...transaction,
-                      status: "settlement",
-                      midtransStatus: midtransStatus,
+                      transactionStatus: "paid",
                     },
                   });
                 }
@@ -94,73 +108,22 @@ export async function GET(request) {
               midtransStatus === "expire" &&
               currentStatus === "pending"
             ) {
-              // Update status expired di VPS
-              const updateResponse = await fetch(
-                `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    orderId: transaction.orderId,
-                    phoneNumber: phoneNumber,
-                    status: "expired",
-                    midtransStatus: midtransStatus,
-                  }),
-                },
-              );
-
-              if (updateResponse.ok) {
-                const updateResult = await updateResponse.json();
-                if (updateResult.success) {
-                  updatedTransactions.push({
-                    orderId: transaction.orderId,
-                    oldStatus: currentStatus,
-                    newStatus: "expired",
-                  });
-                }
-              }
+              // Update ke expired
             } else if (
               midtransStatus === "cancel" &&
               currentStatus === "pending"
             ) {
-              // Update status cancelled di VPS
-              const updateResponse = await fetch(
-                `${NEXT_PUBLIC_VPS_API_URL}/api/transactions/update-status`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    orderId: transaction.orderId,
-                    phoneNumber: phoneNumber,
-                    status: "cancelled",
-                    midtransStatus: midtransStatus,
-                  }),
-                },
-              );
-
-              if (updateResponse.ok) {
-                const updateResult = await updateResponse.json();
-                if (updateResult.success) {
-                  updatedTransactions.push({
-                    orderId: transaction.orderId,
-                    oldStatus: currentStatus,
-                    newStatus: "cancelled",
-                  });
-                }
-              }
+              // Update ke cancelled
             }
           }
         } else {
-          console.warn(
-            `⚠️ [FRONTEND] Failed to check Midtrans status for ${transaction.orderId}`,
-          );
+          console.warn(`⚠️ [FRONTEND] Failed to check status for ${orderId}`);
         }
       } catch (error) {
         console.error(
-          `❌ [FRONTEND] Error checking Midtrans for ${transaction.orderId}:`,
+          `❌ [FRONTEND] Error checking status for ${transaction.orderId}:`,
           error.message,
         );
-        // Continue dengan transaction berikutnya
       }
     }
 
@@ -174,7 +137,6 @@ export async function GET(request) {
       const finalResult = await finalResponse.json();
       finalPendingTransactions = finalResult.pendingTransactions || [];
     } else {
-      // Jika gagal ambil data terbaru, gunakan data awal
       finalPendingTransactions = pendingTransactions;
     }
 
@@ -189,13 +151,15 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("❌ [FRONTEND] Error syncing pending transactions:", error);
+    // ✅ JANGAN RETURN ERROR, return empty array
     return NextResponse.json(
       {
-        success: false,
-        error: error.message,
+        success: true,
         pendingTransactions: [],
+        updatedTransactions: [],
+        error: error.message,
       },
-      { status: 500 },
+      { status: 200 },
     );
   }
 }

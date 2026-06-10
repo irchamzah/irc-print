@@ -2,7 +2,21 @@
 "use client";
 import { usePageSelection } from "../hooks/usePageSelection";
 import dynamic from "next/dynamic";
-import { PRINT_SETTINGS } from "../../../../lib/printConstants";
+import PaperSizeTutorialModal from "./PaperSizeTutorialModal";
+import { useState } from "react";
+
+// Helper function untuk mendapatkan deskripsi ukuran kertas
+const getPaperSizeDescription = (size) => {
+  const descriptions = {
+    A4: "A4 (210 × 297 mm)",
+    F4: "F4 (210 × 330 mm)",
+    Letter: "Letter (216 × 279 mm)",
+    Legal: "Legal (216 × 356 mm)",
+    A3: "A3 (297 × 420 mm)",
+    A5: "A5 (148 × 210 mm)",
+  };
+  return descriptions[size] || size;
+};
 
 const PDFPreview = dynamic(() => import("./PDFPreview"), {
   ssr: false,
@@ -13,13 +27,17 @@ const PDFPreview = dynamic(() => import("./PDFPreview"), {
   ),
 });
 
-// PageSelector TERPAKAI
+// PageSelector - UPDATED dengan finalPrices
 const PageSelector = ({
   totalPages,
   onSettingsChange,
   initialSettings,
   file,
-  prices,
+  finalPrices,
+  enabledFeatures,
+  volumeDiscounts,
+  printerName,
+  detectedPDFSize = null,
 }) => {
   const {
     pagesToShow,
@@ -39,26 +57,28 @@ const PageSelector = ({
     allPagesSelected,
     somePagesSelected,
     selectedPages,
-  } = usePageSelection(totalPages, initialSettings, onSettingsChange, prices);
+  } = usePageSelection(
+    totalPages,
+    initialSettings,
+    onSettingsChange,
+    finalPrices,
+    volumeDiscounts,
+  );
 
   if (totalPages === 0) return null;
 
+  const availablePaperSizes = (enabledFeatures?.paperSizes || ["A4", "F4"]).map(
+    (size) => ({
+      key: size,
+      description: getPaperSizeDescription(size),
+    }),
+  );
+
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      {/* <div className="text-center sm:text-left">
-        <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
-          Atur Jenis Print per Halaman
-        </h3>
-        <p className="text-gray-600 text-sm">
-          Pilih tiap halaman akan dicetak warna atau hitam-putih
-        </p>
-      </div> */}
-
       {/* Bulk Actions - Versi Minimalis */}
       <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
         <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
-          {/* Bagian Kiri: Label & Tombol */}
           <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
             <span className="text-sm font-medium text-gray-700 block sm:inline">
               Pilih halaman yang akan di print:
@@ -115,7 +135,6 @@ const PageSelector = ({
             </div>
           </div>
 
-          {/* Bagian Kanan: Info Jumlah */}
           <div className="text-sm text-gray-500">
             {allPagesSelected ? (
               <div className="flex items-center">
@@ -154,23 +173,19 @@ const PageSelector = ({
 
       {/* Pages Grid */}
       <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-        {pagesToShow.map(
-          (
-            { page, type, selected }, // ✅ TAMBAH selected di sini
-          ) => (
-            <PageCard
-              key={page}
-              page={page}
-              type={type}
-              selected={selected} // ✅ SEKARANG valid
-              file={file}
-              renderError={renderErrors[page]}
-              onTypeChange={handlePageTypeChange}
-              onSelectionChange={handlePageSelection}
-              onRenderError={handleRenderError}
-            />
-          ),
-        )}
+        {pagesToShow.map(({ page, type, selected }) => (
+          <PageCard
+            key={page}
+            page={page}
+            type={type}
+            selected={selected}
+            file={file}
+            renderError={renderErrors[page]}
+            onTypeChange={handlePageTypeChange}
+            onSelectionChange={handlePageSelection}
+            onRenderError={handleRenderError}
+          />
+        ))}
       </div>
 
       {/* Load More Button */}
@@ -181,18 +196,21 @@ const PageSelector = ({
         />
       )}
 
-      {/* Advanced Settings */}
+      {/* Advanced Settings - dengan paper sizes yang didukung printer */}
       <AdvancedSettings
         printSettings={printSettings}
         copies={initialSettings.copies || 1}
         onPrintSettingsChange={handlePrintSettingsChange}
         onCopiesChange={handleCopiesChange}
+        availablePaperSizes={availablePaperSizes}
+        printerName={printerName}
+        detectedPDFSize={detectedPDFSize}
       />
     </div>
   );
 };
 
-// BulkActionButton TERPAKAI
+// BulkActionButton (tidak berubah)
 const BulkActionButton = ({ type, label, onClick }) => {
   const isColor = type === "color";
   const bgClass = isColor
@@ -243,7 +261,7 @@ const BulkActionButton = ({ type, label, onClick }) => {
   );
 };
 
-// PageCard TERPAKAI
+// PageCard (tidak berubah)
 const PageCard = ({
   page,
   type,
@@ -262,7 +280,6 @@ const PageCard = ({
           : "border-gray-200 shadow-sm hover:shadow-md opacity-80"
       }`}
     >
-      {/* Checkbox di pojok kanan atas */}
       <div className="absolute top-3 right-3 z-10">
         <button
           type="button"
@@ -289,7 +306,6 @@ const PageCard = ({
         </button>
       </div>
 
-      {/* Badge Halaman */}
       <div className="text-center mb-3">
         <div
           className={`inline-flex items-center px-3 py-1 rounded-full ${
@@ -319,12 +335,11 @@ const PageCard = ({
         )}
       </div>
 
-      {/* Type Selector */}
       <div className="space-y-2">
         <select
           value={type}
           onChange={(e) => onTypeChange(page, e.target.value)}
-          disabled={!selected} // Nonaktifkan jika tidak terpilih
+          disabled={!selected}
           className={`w-full py-2 px-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors ${
             selected
               ? "border-gray-300 bg-white text-gray-700"
@@ -335,7 +350,6 @@ const PageCard = ({
           <option value="color">🟡 Warna</option>
         </select>
 
-        {/* Status Badge */}
         <div
           className={`text-center px-2 py-1 rounded-lg text-xs font-medium ${
             selected
@@ -356,7 +370,7 @@ const PageCard = ({
   );
 };
 
-// ErrorPreview TERPAKAI
+// ErrorPreview (tidak berubah)
 const ErrorPreview = () => {
   return (
     <div className="w-full h-32 sm:h-36 bg-red-50 flex items-center justify-center rounded-lg border-2 border-dashed border-red-200">
@@ -380,7 +394,7 @@ const ErrorPreview = () => {
   );
 };
 
-// 🥸LoadMoreButton /app/printers/[printerId]/components/LoadMoreButton.js TERPAKAI
+// LoadMoreButton (tidak berubah)
 const LoadMoreButton = ({ remaining, onLoadMore }) => {
   return (
     <div className="text-center pt-4">
@@ -409,12 +423,15 @@ const LoadMoreButton = ({ remaining, onLoadMore }) => {
   );
 };
 
-// AdvancedSettings TERPAKAI
+// AdvancedSettings - UPDATED dengan availablePaperSizes
 const AdvancedSettings = ({
   printSettings,
   copies,
   onPrintSettingsChange,
   onCopiesChange,
+  availablePaperSizes = [],
+  printerName,
+  detectedPDFSize = null,
 }) => {
   return (
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-6">
@@ -427,6 +444,9 @@ const AdvancedSettings = ({
         <PaperSizeSetting
           value={printSettings.paperSize}
           onChange={(value) => onPrintSettingsChange({ paperSize: value })}
+          availablePaperSizes={availablePaperSizes}
+          printerName={printerName}
+          detectedPDFSize={detectedPDFSize}
         />
         <CopiesSetting value={copies} onChange={onCopiesChange} />
       </div>
@@ -434,7 +454,7 @@ const AdvancedSettings = ({
   );
 };
 
-// SettingsIcon TERPAKAI
+// SettingsIcon (tidak berubah)
 const SettingsIcon = () => {
   return (
     <svg
@@ -460,29 +480,82 @@ const SettingsIcon = () => {
   );
 };
 
-// PaperSizeSetting TERPAKAI
-const PaperSizeSetting = ({ value, onChange }) => {
+// PaperSizeSetting - UPDATED dengan tutorial modal dan lock ke detectedPDFSize
+const PaperSizeSetting = ({ value, onChange, availablePaperSizes = [], printerName, detectedPDFSize = null }) => {
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [previousValue, setPreviousValue] = useState(value);
+  const [selectedPaperSize, setSelectedPaperSize] = useState(value);
+
+  const isLocked = detectedPDFSize !== null;
+
+  const handlePaperSizeChange = (newValue) => {
+    if (isLocked) return; // tidak bisa diubah jika ukuran PDF terdeteksi
+    if (newValue !== value) {
+      setSelectedPaperSize(newValue);
+      setShowTutorial(true);
+    }
+  };
+
+  const handleConfirmChange = () => {
+    onChange(selectedPaperSize);
+    setPreviousValue(selectedPaperSize);
+    setShowTutorial(false);
+  };
+
+  const handleCancelChange = () => {
+    setSelectedPaperSize(previousValue);
+    setShowTutorial(false);
+  };
+
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        📄 Ukuran Kertas
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white text-gray-700"
-      >
-        {Object.entries(PRINT_SETTINGS.PAPER_SIZES).map(([key, paper]) => (
-          <option key={key} value={key}>
-            {paper.description}
-          </option>
-        ))}
-      </select>
-    </div>
+    <>
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          📄 Ukuran Kertas
+        </label>
+        <select
+          value={value}
+          onChange={(e) => handlePaperSizeChange(e.target.value)}
+          disabled={isLocked}
+          className={`w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+            isLocked
+              ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-white border-gray-300 text-gray-700"
+          }`}
+        >
+          {availablePaperSizes.map((paper) => (
+            <option
+              key={paper.key}
+              value={paper.key}
+              disabled={isLocked && paper.key !== detectedPDFSize}
+            >
+              {paper.description}
+              {isLocked && paper.key === detectedPDFSize ? " ✓" : ""}
+            </option>
+          ))}
+        </select>
+        {isLocked && (
+          <p className="text-xs text-blue-600">
+            🔒 Terkunci sesuai ukuran PDF ({detectedPDFSize})
+          </p>
+        )}
+      </div>
+
+      {/* Modal Tutorial — hanya tampil jika tidak terkunci */}
+      {!isLocked && (
+        <PaperSizeTutorialModal
+          isOpen={showTutorial}
+          onClose={handleCancelChange}
+          paperSize={selectedPaperSize}
+          printerName={printerName}
+          onConfirm={handleConfirmChange}
+        />
+      )}
+    </>
   );
 };
 
-// CopiesSetting TERPAKAI
+// CopiesSetting (tidak berubah)
 const CopiesSetting = ({ value, onChange }) => {
   const handleDecrement = () => {
     const newValue = Math.max(1, value - 1);
@@ -517,7 +590,6 @@ const CopiesSetting = ({ value, onChange }) => {
       </label>
 
       <div className="flex items-center">
-        {/* Tombol Minus */}
         <button
           type="button"
           onClick={handleDecrement}
@@ -540,7 +612,6 @@ const CopiesSetting = ({ value, onChange }) => {
           </svg>
         </button>
 
-        {/* Input Number */}
         <input
           type="number"
           min="1"
@@ -552,7 +623,6 @@ const CopiesSetting = ({ value, onChange }) => {
           style={{ WebkitAppearance: "textfield", MozAppearance: "textfield" }}
         />
 
-        {/* Tombol Plus */}
         <button
           type="button"
           onClick={handleIncrement}

@@ -3,7 +3,6 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useHubAuth } from "../../auth/hooks/useHubAuth";
 import { AdminLayout } from "../components/AdminLayout";
 import { useAdminPaperRefills } from "../hooks/useAdminPaperRefills";
-import { ProofUploadModal } from "./components/ProofUploadModal";
 import { StatsCards } from "./components/StatsCards";
 import { StatusStatsCards } from "./components/StatusStatsCards";
 import { FilterSection } from "./components/FilterSection";
@@ -33,8 +32,6 @@ function PaperRefillsContent() {
   } = useAdminPaperRefills();
 
   const [processingId, setProcessingId] = useState(null);
-  const [showProofModal, setShowProofModal] = useState(false);
-  const [selectedRefill, setSelectedRefill] = useState(null);
   const scrollContainerRef = useRef(null);
 
   const saveScrollPosition = () => {
@@ -77,36 +74,40 @@ function PaperRefillsContent() {
     changeSort(sortBy, sortOrder);
   };
 
-  const handleMarkAsPaid = (refill) => {
+  // ✅ Update: Gunakan paperRefillId
+  const handleMarkAsPaid = async (refill) => {
+    const paperRefillId = refill.paperRefillId || refill.refillId;
+
     if (refill.status !== "completed") {
-      alert('❌ Hanya refill dengan status "Selesai" yang bisa dibayar');
+      alert('❌ Hanya refill dengan status "Selesai" yang bisa ditandai');
       return;
     }
-    setSelectedRefill(refill);
-    setShowProofModal(true);
-  };
 
-  const handleConfirmPayment = async (formData) => {
-    if (!selectedRefill) return;
-    setProcessingId(selectedRefill.refillId);
-    const result = await markAsPaid(selectedRefill.refillId, formData);
+    if (refill.totalRevenue <= 0) {
+      alert("❌ Tidak bisa menandai refill tanpa pendapatan");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Apakah Anda yakin ingin menandai refill ini sebagai "Dibayar"?\n\nProfit Partner: ${formatRupiah(refill.partnerProfit)}\nTotal Revenue: ${formatRupiah(refill.totalRevenue)}`,
+      )
+    ) {
+      return;
+    }
+
+    setProcessingId(paperRefillId);
+
+    // ✅ Panggil markAsPaid tanpa formData (tanpa upload proof)
+    const result = await markAsPaid(paperRefillId);
+
     if (result.success) {
-      alert("✅ Pembayaran berhasil");
-      setShowProofModal(false);
+      alert("✅ Refill berhasil ditandai sebagai Dibayar");
       await refresh();
     } else {
-      alert("❌ Gagal: " + result.error);
+      alert("❌ Gagal: " + (result.error || "Terjadi kesalahan"));
     }
     setProcessingId(null);
-  };
-
-  const handleViewProof = (refill) => {
-    if (refill.transferProof) {
-      window.open(
-        `${process.env.NEXT_PUBLIC_VPS_API_URL}${refill.transferProof.url}`,
-        "_blank",
-      );
-    }
   };
 
   if (!isSuperAdmin()) return null;
@@ -171,7 +172,6 @@ function PaperRefillsContent() {
             <RefillsTable
               refills={refills}
               onMarkAsPaid={handleMarkAsPaid}
-              onViewProof={handleViewProof}
               processingId={processingId}
               formatDate={formatDate}
               formatRupiah={formatRupiah}
@@ -186,16 +186,6 @@ function PaperRefillsContent() {
           </>
         )}
       </div>
-
-      {/* Modal Upload Bukti */}
-      <ProofUploadModal
-        isOpen={showProofModal}
-        onClose={() => setShowProofModal(false)}
-        onConfirm={handleConfirmPayment}
-        refill={selectedRefill}
-        processing={processingId === selectedRefill?.refillId}
-        formatRupiah={formatRupiah}
-      />
     </div>
   );
 }
@@ -207,6 +197,26 @@ const tabs = [
     id: "refills",
     label: "💰 Paper Refills",
     href: "/hub/admin/paper-refills",
+  },
+  {
+    id: "printer-models",
+    label: "📦 Printer Models",
+    href: "/hub/admin/printer-models",
+  },
+  {
+    id: "platform-settings",
+    label: "⚙️ Platform Settings",
+    href: "/hub/admin/platform-settings",
+  },
+  {
+    id: "withdrawals",
+    label: "🏦 Withdrawals",
+    href: "/hub/admin/partner-withdrawals",
+  },
+  {
+    id: "raspberry-devices",
+    label: "💻 Raspberry Devices",
+    href: "/hub/admin/raspberry-devices",
   },
 ];
 

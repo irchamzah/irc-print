@@ -1,37 +1,46 @@
-// app/printers/[printerId]/components/TotalCostSection.js
-
-// TotalCostSection TERPAKAI
-export const TotalCostSection = ({ advancedSettings, totalPages, prices }) => {
-  if (!advancedSettings.cost || advancedSettings.cost <= 0) {
-    return null;
-  }
+// TotalCostSection - UPDATED dengan finalPrices
+export const TotalCostSection = ({
+  advancedSettings,
+  totalPages,
+  finalPrices,
+}) => {
+  // Always render the cost section; show placeholder when cost not calculated yet
+  const costValue = advancedSettings.cost || 0;
+  if (costValue <= 0) return null;
 
   const selectedCount = advancedSettings.selectedPages?.length || totalPages;
   const bwPages = advancedSettings.bwPages?.length || 0;
   const copies = advancedSettings.copies || 1;
   const colorPages = advancedSettings.colorPages?.length || 0;
+  const paperSize = advancedSettings.paperSize || "A4";
 
   const totalSheets = (colorPages + bwPages) * copies;
-  const colorPrice = prices?.color?.A4 || 1500;
 
-  // Cari harga BW dan tier selanjutnya
-  let bwPrice = 500;
+  // ✅ UPDATE: Gunakan finalPrices dari struktur baru
+  const colorPrice = finalPrices?.color?.[paperSize] || 1500;
+  const bwPrice = finalPrices?.monochrome?.[paperSize] || 500;
+
+  // ✅ UPDATE: Volume discounts dari printer (discountFlat berlaku untuk semua jenis halaman)
+  const volumeDiscounts = advancedSettings.volumeDiscounts || [];
+  let discountFlat = 0;
   let nextTier = null;
 
-  if (prices?.bwTiers) {
-    const sortedTiers = [...prices.bwTiers].sort(
-      (a, b) => a.minSheets - b.minSheets,
-    );
-
+  if (volumeDiscounts.length > 0) {
+    const sortedTiers = [...volumeDiscounts].sort((a, b) => a.minSheets - b.minSheets);
     for (let i = 0; i < sortedTiers.length; i++) {
       if (totalSheets >= sortedTiers[i].minSheets) {
-        bwPrice = sortedTiers[i].price;
-        nextTier = sortedTiers[i + 1];
+        discountFlat = sortedTiers[i].discountFlat || 0;
+        nextTier = sortedTiers[i + 1] || null;
       }
     }
   }
 
+  const effectiveBwPrice = Math.max(0, bwPrice - discountFlat);
+  const effectiveColorPrice = Math.max(0, colorPrice - discountFlat);
   const sheetsNeeded = nextTier ? nextTier.minSheets - totalSheets : 0;
+  const nextFlat = nextTier ? nextTier.discountFlat || 0 : 0;
+  const nextTierBwPrice = Math.max(0, bwPrice - nextFlat);
+  const nextTierColorPrice = Math.max(0, colorPrice - nextFlat);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -44,26 +53,33 @@ export const TotalCostSection = ({ advancedSettings, totalPages, prices }) => {
           </p>
         </div>
         <p className="text-2xl font-bold text-green-600">
-          Rp {advancedSettings.cost.toLocaleString()}
+          Rp {costValue.toLocaleString()}
         </p>
       </div>
 
       {/* Harga per lembar */}
       <div className="space-y-2 text-sm mb-3">
-        <div className="flex justify-between">
-          <span>🟡 Warna</span>
-          <span>Rp {colorPrice.toLocaleString()}/lbr</span>
+        <div className="flex justify-between items-start">
+          <span>🟡 Warna ({paperSize})</span>
+          <div className="text-right">
+            <span>Rp {effectiveColorPrice.toLocaleString()}/lbr</span>
+            {nextTier && (
+              <p className="text-xs text-blue-600">
+                +{sheetsNeeded} lbr lagi → Rp {nextTierColorPrice.toLocaleString()}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-between items-start">
-          <span>⚫ Hitam Putih</span>
+          <span>⚫ Hitam Putih ({paperSize})</span>
           <div className="text-right">
             <span className="font-medium">
-              Rp {bwPrice.toLocaleString()}/lbr
+              Rp {effectiveBwPrice.toLocaleString()}/lbr
             </span>
             {nextTier && (
               <p className="text-xs text-blue-600">
-                +{sheetsNeeded} lbr lagi → Rp {nextTier.price}
+                +{sheetsNeeded} lbr lagi → Rp {nextTierBwPrice.toLocaleString()}
               </p>
             )}
           </div>

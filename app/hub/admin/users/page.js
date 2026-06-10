@@ -1,3 +1,4 @@
+// app/hub/admin/users/page.js SUDAH DIUPDATE
 "use client";
 import { Suspense } from "react";
 import { useState, useRef, useEffect } from "react";
@@ -12,7 +13,7 @@ import { SortSection } from "./components/SortSection";
 import { UsersTable } from "./components/UsersTable";
 import { Pagination } from "./components/Pagination";
 
-// Komponen konten yang menggunakan useAdminUsers (yang di dalamnya menggunakan useSearchParams)
+// Komponen konten yang menggunakan useAdminUsers
 function UsersContent() {
   const { isSuperAdmin } = useHubAuth();
   const {
@@ -32,6 +33,8 @@ function UsersContent() {
     formatDate,
     formatRupiah,
     formatPoints,
+    getRoleBadge, // ✅ Tambah dari hook
+    getAccessPrinterCount, // ✅ Tambah dari hook
   } = useAdminUsers();
 
   const [showFormModal, setShowFormModal] = useState(false);
@@ -41,16 +44,6 @@ function UsersContent() {
   const [formError, setFormError] = useState(null);
   const [printers, setPrinters] = useState([]);
   const scrollRef = useRef(null);
-
-  const tabs = [
-    { id: "users", label: "👥 Users", href: "/hub/admin/users" },
-    { id: "printers", label: "🖨️ Printers", href: "/hub/admin/printers" },
-    {
-      id: "refills",
-      label: "💰 Paper Refills",
-      href: "/hub/admin/paper-refills",
-    },
-  ];
 
   const saveScrollPosition = () => {
     if (scrollRef.current) {
@@ -177,25 +170,6 @@ function UsersContent() {
             Kelola semua user, partner, dan admin
           </p>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Tambah User
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -232,6 +206,8 @@ function UsersContent() {
               formatDate={formatDate}
               formatRupiah={formatRupiah}
               formatPoints={formatPoints}
+              getRoleBadge={getRoleBadge} // ✅ Tambah
+              getAccessPrinterCount={getAccessPrinterCount} // ✅ Tambah
               pagination={pagination}
             />
             {pagination.totalPages > 0 && (
@@ -287,6 +263,26 @@ export default function AdminUsersPage() {
       id: "refills",
       label: "💰 Paper Refills",
       href: "/hub/admin/paper-refills",
+    },
+    {
+      id: "printer-models",
+      label: "📦 Printer Models",
+      href: "/hub/admin/printer-models",
+    },
+    {
+      id: "platform-settings",
+      label: "⚙️ Platform Settings",
+      href: "/hub/admin/platform-settings",
+    },
+    {
+      id: "withdrawals",
+      label: "🏦 Withdrawals",
+      href: "/hub/admin/partner-withdrawals",
+    },
+    {
+      id: "raspberry-devices",
+      label: "💻 Raspberry Devices",
+      href: "/hub/admin/raspberry-devices",
     },
   ];
 

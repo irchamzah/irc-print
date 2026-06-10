@@ -1,3 +1,4 @@
+// app/hub/admin/hooks/useAdminUsers.js SUDAH DIUPDATE
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,6 +16,7 @@ export const useAdminUsers = () => {
     super_admin: 0,
     partner: 0,
     user: 0,
+    customer: 0, // ✅ Tambah customer count
     hasBankAccount: 0,
     totalPoints: 0,
   });
@@ -72,6 +74,28 @@ export const useAdminUsers = () => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(points || 0);
+  };
+
+  // Helper: Mendapatkan badge role
+  const getRoleBadge = (role) => {
+    switch (role) {
+      case "super_admin":
+        return { class: "bg-purple-100 text-purple-700", text: "Super Admin" };
+      case "admin":
+        return { class: "bg-blue-100 text-blue-700", text: "Admin" };
+      case "partner":
+        return { class: "bg-green-100 text-green-700", text: "Partner" };
+      case "customer":
+        return { class: "bg-gray-100 text-gray-700", text: "Customer" };
+      default:
+        return { class: "bg-gray-100 text-gray-700", text: role || "User" };
+    }
+  };
+
+  // Helper: Mendapatkan jumlah printer yang diakses (untuk partner)
+  const getAccessPrinterCount = (user) => {
+    if (user.role !== "partner") return null;
+    return user.accessPrinterIds?.length || 0;
   };
 
   // Helper: Build query params
@@ -148,13 +172,23 @@ export const useAdminUsers = () => {
 
       const data = await response.json();
       if (data.success) {
-        setUsers(data.data || []);
+        // ✅ Transform data user sesuai struktur baru
+        const transformedUsers = (data.data || []).map((user) => ({
+          ...user,
+          // Pastikan field yang benar ada
+          accessPrinterIds: user.accessPrinterIds || [],
+          // Hapus printHistory jika masih ada (redundant)
+          printHistory: undefined,
+        }));
+
+        setUsers(transformedUsers);
         setStats(
           data.stats || {
             total: 0,
             super_admin: 0,
             partner: 0,
             user: 0,
+            customer: 0,
             hasBankAccount: 0,
             totalPoints: 0,
           },
@@ -181,7 +215,7 @@ export const useAdminUsers = () => {
       setPagination((prev) => ({ ...prev, page: 1 }));
       updateUrl(1, pagination.limit, updatedFilters);
     },
-    [filters, pagination.limit, updateUrl, fetchUsers],
+    [filters, pagination.limit, updateUrl],
   );
 
   // Reset all filters
@@ -239,13 +273,25 @@ export const useAdminUsers = () => {
   const createUser = useCallback(
     async (userData) => {
       try {
+        // ✅ Transform data sesuai struktur baru
+        const payload = {
+          name: userData.name,
+          phone: userData.phone,
+          password: userData.password,
+          role: userData.role,
+          accessPrinterIds: userData.accessPrinterIds || [], // ✅ Gunakan accessPrinterIds
+          bankAccount: userData.bankAccount,
+          points: userData.points || 0,
+          totalSpent: userData.totalSpent || 0,
+        };
+
         const response = await fetch(`/api/hub/admin/users`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(userData),
+          body: JSON.stringify(payload),
         });
 
         const result = await response.json();
@@ -265,13 +311,29 @@ export const useAdminUsers = () => {
   const updateUser = useCallback(
     async (userId, userData) => {
       try {
+        // ✅ Transform data sesuai struktur baru
+        const payload = {
+          name: userData.name,
+          phone: userData.phone,
+          role: userData.role,
+          accessPrinterIds: userData.accessPrinterIds || [], // ✅ Gunakan accessPrinterIds
+          bankAccount: userData.bankAccount,
+          points: userData.points,
+          totalSpent: userData.totalSpent,
+        };
+
+        // Only include password if provided
+        if (userData.password) {
+          payload.password = userData.password;
+        }
+
         const response = await fetch(`/api/hub/admin/users/${userId}`, {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(userData),
+          body: JSON.stringify(payload),
         });
 
         const result = await response.json();
@@ -352,6 +414,8 @@ export const useAdminUsers = () => {
     formatDate,
     formatRupiah,
     formatPoints,
+    getRoleBadge,
+    getAccessPrinterCount,
     refresh: fetchUsers,
   };
 };

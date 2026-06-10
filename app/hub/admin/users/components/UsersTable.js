@@ -1,13 +1,18 @@
+// app/hub/admin/users/components/UsersTable.js SUDAH DIUPDATE
 "use client";
 import { useState } from "react";
 
-// 🥸UsersTable /app/hub/admin/components/UsersTable.js TERPAKAI
+// UsersTable - UPDATED dengan struktur baru
 export const UsersTable = ({
   users,
   onEdit,
   onDelete,
   onCreate,
   formatDate,
+  formatRupiah,
+  formatPoints,
+  getRoleBadge, // ✅ Tambah dari hook
+  getAccessPrinterCount, // ✅ Tambah dari hook
   pagination,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,27 +24,93 @@ export const UsersTable = ({
       user.role?.includes(searchTerm),
   );
 
-  const getRoleBadge = (role) => {
-    if (role === "super_admin") {
+  // ✅ Gunakan getRoleBadge dari props jika ada, fallback ke internal
+  const renderRoleBadge = (user) => {
+    if (getRoleBadge) {
+      const badge = getRoleBadge(user.role);
+      return (
+        <span className={`px-2 py-1 rounded-full text-xs ${badge.class}`}>
+          {badge.text}
+        </span>
+      );
+    }
+
+    // Fallback jika getRoleBadge tidak tersedia
+    if (user.role === "super_admin") {
       return (
         <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
           Super Admin
         </span>
       );
     }
-    if (role === "partner") {
+    if (user.role === "admin") {
+      return (
+        <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs">
+          Admin
+        </span>
+      );
+    }
+    if (user.role === "partner") {
       return (
         <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-          {" "}
           Partner
+        </span>
+      );
+    }
+    if (user.role === "customer") {
+      return (
+        <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+          Customer
         </span>
       );
     }
     return (
       <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-        User
+        {user.role || "Customer"}
       </span>
     );
+  };
+
+  // ✅ Render akses printer (menggunakan accessPrinterIds)
+  const renderAccessPrinters = (user) => {
+    if (user.role === "partner" || user.role === "admin") {
+      const count = getAccessPrinterCount
+        ? getAccessPrinterCount(user)
+        : user.accessPrinterIds?.length || 0;
+
+      return (
+        <div className="text-sm text-gray-600">
+          {count} printer
+          {count > 0 && (
+            <span className="text-xs text-gray-400 ml-1">(terdaftar)</span>
+          )}
+        </div>
+      );
+    }
+    return <div className="text-sm text-gray-400">-</div>;
+  };
+
+  // ✅ Render points dan total spent
+  const renderPointsInfo = (user) => {
+    if (user) {
+      return (
+        <div>
+          <div className="text-sm font-medium text-green-600">
+            {formatPoints
+              ? formatPoints(user.points)
+              : (user.points || 0).toFixed(2)}{" "}
+            pts
+          </div>
+          <div className="text-xs text-gray-400">
+            Total:{" "}
+            {formatRupiah
+              ? formatRupiah(user.totalSpent)
+              : `Rp ${(user.totalSpent || 0).toLocaleString()}`}
+          </div>
+        </div>
+      );
+    }
+    return <div className="text-sm text-gray-400">-</div>;
   };
 
   return (
@@ -61,7 +132,7 @@ export const UsersTable = ({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search Input - akan mengambil sisa ruang */}
+            {/* Search Input */}
             <div className="flex-1 min-w-0">
               <div className="relative">
                 <input
@@ -87,7 +158,7 @@ export const UsersTable = ({
               </div>
             </div>
 
-            {/* Tombol Tambah User - dengan teks berbeda di mobile/desktop */}
+            {/* Tombol Tambah User */}
             <div className="flex-shrink-0">
               <button
                 onClick={onCreate}
@@ -131,6 +202,9 @@ export const UsersTable = ({
                 Akses Printer
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Points / Total
+              </th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Dibuat
               </th>
               <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -140,21 +214,25 @@ export const UsersTable = ({
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredUsers.map((user) => (
-              <tr key={user.phone} className="hover:bg-gray-50">
+              <tr key={user.userId || user.phone} className="hover:bg-gray-50">
                 <td className="px-4 sm:px-6 py-3">
                   <div className="text-sm font-medium text-gray-800">
-                    {user.name}
+                    {user.name || "—"}
                   </div>
+                  {user.userId && (
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      ID: {user.userId.slice(0, 12)}...
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
                   {user.phone}
                 </td>
-                <td className="px-4 sm:px-6 py-3">{getRoleBadge(user.role)}</td>
+                <td className="px-4 sm:px-6 py-3">{renderRoleBadge(user)}</td>
                 <td className="px-4 sm:px-6 py-3">
-                  <div className="text-sm text-gray-600">
-                    {user.accessPrinters?.length || 0} printer
-                  </div>
+                  {renderAccessPrinters(user)}
                 </td>
+                <td className="px-4 sm:px-6 py-3">{renderPointsInfo(user)}</td>
                 <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
                   {formatDate(user.createdAt)}
                 </td>
@@ -162,7 +240,7 @@ export const UsersTable = ({
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => onEdit(user)}
-                      className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                      className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       title="Edit"
                     >
                       <svg
@@ -181,7 +259,7 @@ export const UsersTable = ({
                     </button>
                     <button
                       onClick={() => onDelete(user)}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                      className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                       title="Hapus"
                     >
                       <svg

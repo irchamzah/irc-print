@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// PrinterHeader TERPAKAI
+// PrinterHeader - UPDATED dengan paperMode
 export const PrinterHeader = ({ printer }) => {
   if (!printer) return null;
 
@@ -29,6 +29,10 @@ export const PrinterHeader = ({ printer }) => {
 
   const statusInfo = getStatusInfo(printer.status);
 
+  // ✅ Cek mode printer
+  const isUnlimitedMode = printer.paperMode === "unlimited";
+  const paperCount = printer.paperStatus?.paperCount || 0;
+
   // Format last seen time
   const formatLastSeen = (lastSeen) => {
     if (!lastSeen) return "Tidak diketahui";
@@ -46,19 +50,46 @@ export const PrinterHeader = ({ printer }) => {
     return lastSeenDate.toLocaleDateString("id-ID");
   };
 
+  // ✅ Tampilan status kertas berdasarkan mode
+  const getPaperStatusDisplay = () => {
+    if (isUnlimitedMode) {
+      return {
+        icon: "",
+        text: "",
+        description: "",
+        class: "",
+      };
+      // return {
+      //   icon: "♾️",
+      //   text: "Unlimited",
+      //   description: "Stok kertas tidak terbatas",
+      //   class: "text-purple-600",
+      // };
+    }
+    return {
+      icon: "📄",
+      text: `${paperCount} kertas tersedia`,
+      description: paperCount <= 10 ? "⚠️ Stok menipis!" : "",
+      class: paperCount <= 10 ? "text-orange-600" : "text-gray-600",
+    };
+  };
+
+  const paperStatus = getPaperStatusDisplay();
+
   return (
     <div className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
-              {printer.name}
+              {printer.printerName || printer.name}
             </h1>
             <p className="text-gray-600 text-sm sm:text-base mt-1 truncate">
               {printer.location?.address}
             </p>
           </div>
           <div className="flex flex-col sm:items-end gap-2">
+            {/* Status Printer */}
             <div
               className={`inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${statusInfo.class}`}
             >
@@ -67,10 +98,29 @@ export const PrinterHeader = ({ printer }) => {
               ></div>
               {statusInfo.text}
             </div>
+
+            {/* Status Kertas - UPDATED untuk unlimited mode */}
             <div className="flex flex-col sm:items-end gap-1">
-              <p className="text-gray-600 text-xs sm:text-sm">
-                📄 {printer.paperStatus?.paperCount || 0} kertas tersedia
-              </p>
+              <div className="flex items-center gap-1">
+                <span className={`text-xs sm:text-sm ${paperStatus.class}`}>
+                  {paperStatus.icon} {paperStatus.text}
+                </span>
+                {paperStatus.description && (
+                  <span className="text-xs text-orange-500 ml-1">
+                    {paperStatus.description}
+                  </span>
+                )}
+              </div>
+              {/* {!isUnlimitedMode && paperCount <= 20 && paperCount > 0 && (
+                <p className="text-xs text-orange-500">
+                  ⚠️ Segera isi ulang kertas!
+                </p>
+              )} */}
+              {!isUnlimitedMode && paperCount === 0 && (
+                <p className="text-xs text-red-500">
+                  ❌ Kertas habis! Isi ulang untuk melanjutkan print.
+                </p>
+              )}
               {printer.lastSeen && (
                 <p className="text-gray-500 text-xs">
                   Terakhir aktif: {formatLastSeen(printer.lastSeen)}

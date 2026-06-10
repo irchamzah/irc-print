@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-// Filter Component
+// Filter Component - UPDATED dengan role admin
 export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
   const [local, setLocal] = useState(filters);
 
@@ -8,11 +8,13 @@ export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
     setLocal(filters);
   }, [filters]);
 
+  // ✅ Update roleOptions dengan menambahkan Admin
   const roleOptions = [
     { value: "", label: "Semua Role" },
     { value: "super_admin", label: "Super Admin" },
+    { value: "admin", label: "Admin" }, // ✅ Tambah Admin
     { value: "partner", label: "Partner" },
-    { value: "user", label: "User" },
+    { value: "customer", label: "Customer" }, // ✅ Ganti "user" → "customer"
   ];
 
   const hasBankAccountOptions = [
@@ -93,7 +95,7 @@ export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
           </select>
         </div>
 
-        {/* Date Range */}
+        {/* Date Range - Dari Tanggal */}
         <div>
           <label className="block text-xs text-gray-600 mb-1 font-medium">
             Dari Tanggal
@@ -105,6 +107,8 @@ export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
           />
         </div>
+
+        {/* Date Range - Sampai Tanggal */}
         <div>
           <label className="block text-xs text-gray-600 mb-1 font-medium">
             Sampai Tanggal
@@ -117,7 +121,7 @@ export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
           />
         </div>
 
-        {/* Points Range */}
+        {/* Points Range - Minimal */}
         <div>
           <label className="block text-xs text-gray-600 mb-1 font-medium">
             Poin Minimal
@@ -131,6 +135,8 @@ export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
           />
         </div>
+
+        {/* Points Range - Maksimal */}
         <div>
           <label className="block text-xs text-gray-600 mb-1 font-medium">
             Poin Maksimal
@@ -145,7 +151,7 @@ export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
           />
         </div>
 
-        {/* Total Spent Range */}
+        {/* Total Spent Range - Minimal */}
         <div>
           <label className="block text-xs text-gray-600 mb-1 font-medium">
             Total Belanja Min
@@ -160,6 +166,8 @@ export const FilterSection = ({ filters, onApply, onReset, isLoading }) => {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
           />
         </div>
+
+        {/* Total Spent Range - Maksimal */}
         <div>
           <label className="block text-xs text-gray-600 mb-1 font-medium">
             Total Belanja Max

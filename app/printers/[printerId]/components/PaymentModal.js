@@ -12,6 +12,7 @@ const PaymentModal = ({
   isLoading = false,
   userSession = null,
   isRestoredTransaction = false,
+  currentPrintJobId,
 }) => {
   const {
     snapLoaded,
@@ -20,7 +21,12 @@ const PaymentModal = ({
     isSnapOpen,
     openSnapPayment,
     setHasAttemptedOpen,
-  } = usePaymentModal(isOpen, paymentData, isRestoredTransaction);
+  } = usePaymentModal(
+    isOpen,
+    paymentData,
+    isRestoredTransaction,
+    currentPrintJobId,
+  );
 
   // 🌐 handleManualOpenSnap /app/printers/[printerId]/components/PaymentModal.js TERPAKAI
   const handleManualOpenSnap = () => {

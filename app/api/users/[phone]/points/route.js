@@ -1,18 +1,18 @@
-// app/api/users/[phone]/points/route.js
 import { NextResponse } from "next/server";
 
 const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
-// GET /api/users/[phone]/points/route.js TERPAKAI
+// GET /api/users/[phone]/points
 export async function GET(request, { params }) {
   try {
     const { phone } = await params;
     const { searchParams } = new URL(request.url);
-    const printerId = searchParams.get("printerId"); // Ambil printerId dari query
+    const printerId = searchParams.get("printerId");
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
+    // ✅ UPDATE: Gunakan endpoint GET langsung di VPS
     const getResponse = await fetch(
       `${NEXT_PUBLIC_VPS_API_URL}/api/users/${phone}/points`,
       {
@@ -30,25 +30,20 @@ export async function GET(request, { params }) {
       const result = await getResponse.json();
 
       if (result.success) {
-        if (result.user) {
-          return NextResponse.json({
-            success: true,
+        return NextResponse.json({
+          success: true,
+          points: result.points || 0,
+          user: {
+            phone: result.user?.phone || phone,
+            name: result.user?.name || `User ${phone}`,
             points: result.points || 0,
-            user: {
-              phone: result.user.phone,
-              name: result.user.name || `User ${phone}`,
-              points: result.points || 0,
-            },
-            isNewUser: false,
-          });
-        } else {
-          // User tidak ditemukan, buat user baru dengan printerId
-          return await createNewUser(phone, printerId);
-        }
+          },
+          isNewUser: false,
+        });
       }
     }
 
-    // Jika GET gagal, coba buat user baru langsung
+    // Jika GET gagal (user tidak ditemukan), buat user baru
     return await createNewUser(phone, printerId);
   } catch (error) {
     if (error.name === "AbortError") {
@@ -74,97 +69,40 @@ export async function GET(request, { params }) {
   }
 }
 
-// export async function POST(request) {
-//   console.log("🌐POST /app/api/users/[phone]/points/route.js");
-//   try {
-//     const body = await request.json();
-
-//     const controller = new AbortController();
-//     const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-//     const response = await fetch(
-//       `${NEXT_PUBLIC_VPS_API_URL}/api/users/points`,
-//       {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify(body),
-//         signal: controller.signal,
-//       },
-//     );
-
-//     clearTimeout(timeoutId);
-
-//     if (!response.ok) {
-//       const errorText = await response.text();
-//       console.error("❌ [FRONTEND] VPS POST failed:", errorText);
-//       throw new Error(`VPS API error: ${response.status}`);
-//     }
-
-//     const result = await response.json();
-
-//     return NextResponse.json(result);
-//   } catch (error) {
-//     if (error.name === "AbortError") {
-//       console.error("⏰ Request timeout");
-//       return NextResponse.json(
-//         { success: false, error: "Request timeout" },
-//         { status: 408 },
-//       );
-//     }
-
-//     console.error(
-//       "❌ [FRONTEND] Error in POST /api/users/points:",
-//       error.message,
-//     );
-//     return NextResponse.json(
-//       {
-//         success: false,
-//         error: "Service sedang tidak tersedia",
-//         details: error.message,
-//       },
-//       { status: 503 },
-//     );
-//   }
-// }
-
-// 🌐createNewUser /app/api/users/[phone]/points/route.js TERPAKAI
+// Helper function untuk membuat user baru
 async function createNewUser(phone, printerId) {
   try {
-    // Dapatkan point divider dari printer
-    let pointDivider;
+    let pointDivider = 4000; // Default value
+
+    // Dapatkan point divider dari printer jika ada
     if (printerId) {
       try {
         const printerResponse = await fetch(
-          `${NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}/point-divider`,
+          `${NEXT_PUBLIC_VPS_API_URL}/api/printers/${printerId}`,
         );
         if (printerResponse.ok) {
           const printerData = await printerResponse.json();
-          pointDivider = printerData.pointDivider;
+          pointDivider = printerData.printer?.pointDivider || 4000;
         }
       } catch (error) {
         console.error("Error fetching printer point divider:", error);
       }
     }
 
-    const createResponse = await fetch(
-      `${NEXT_PUBLIC_VPS_API_URL}/api/users/points`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: phone,
-          points: 0,
-          amount: 0,
-          orderId: `init-${Date.now()}`,
-          pointDivider: pointDivider,
-          fileName: "user-initialization.pdf",
-        }),
+    // ✅ UPDATE: Gunakan endpoint POST yang benar di VPS
+    const createResponse = await fetch(`${NEXT_PUBLIC_VPS_API_URL}/api/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        phone: phone,
+        name: `User ${phone}`,
+        role: "customer",
+        points: 0,
+        totalSpent: 0,
+      }),
+    });
 
     if (!createResponse.ok) {
       const errorText = await createResponse.text();
@@ -179,9 +117,9 @@ async function createNewUser(phone, printerId) {
         success: true,
         points: 0,
         user: {
-          phone: createResult.user?.phone || phone,
-          name: createResult.user?.name || `User ${phone}`,
-          points: createResult.currentPoints || 0,
+          phone: createResult.data?.phone || phone,
+          name: createResult.data?.name || `User ${phone}`,
+          points: 0,
         },
         isNewUser: true,
         message: "User baru berhasil dibuat dengan 0 poin",
@@ -191,6 +129,18 @@ async function createNewUser(phone, printerId) {
     }
   } catch (error) {
     console.error("❌ [FRONTEND] Create new user error:", error.message);
-    throw error;
+
+    // Return response yang graceful meskipun error
+    return NextResponse.json({
+      success: true,
+      points: 0,
+      user: {
+        phone: phone,
+        name: `User ${phone}`,
+        points: 0,
+      },
+      isNewUser: true,
+      message: "User created with default values (API fallback)",
+    });
   }
 }

@@ -1,4 +1,4 @@
-// app/api/print/route.js (FRONTEND Next.js)
+// api/print/route.js (Frontend Next.js)
 import { NextResponse } from "next/server";
 
 const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
@@ -8,26 +8,35 @@ export async function POST(request) {
     const contentType = request.headers.get("content-type") || "";
 
     if (contentType.includes("application/json")) {
-      // Handle restored transaction - forward as JSON
       const jsonData = await request.json();
+
+      // ✅ PASTIKAN DATA YANG DIKIRIM LENGKAP
+      const payload = {
+        orderId: jsonData.orderId,
+        printerId: jsonData.printerId,
+        copies: jsonData.copies,
+        colorPages: jsonData.colorPages,
+        bwPages: jsonData.bwPages,
+        totalCost: jsonData.totalCost,
+        totalPages: jsonData.totalPages,
+        pointsToAdd: jsonData.pointsToAdd,
+        pointDivider: jsonData.pointDivider,
+        phoneNumber: jsonData.phoneNumber,
+        paperSize: jsonData.paperSize,
+        quality: jsonData.quality,
+        isRestored: true,
+      };
 
       const response = await fetch(`${NEXT_PUBLIC_VPS_API_URL}/api/print`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...jsonData, isRestored: true }),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ VPS error response:", errorText);
-        throw new Error(
-          `VPS returned ${response.status}: ${response.statusText}`,
-        );
-      }
+      const result = await response.json();
 
-      return NextResponse.json(await response.json());
+      return NextResponse.json(result, { status: response.status });
     } else if (contentType.includes("multipart/form-data")) {
-      // Handle normal file upload
       const formData = await request.formData();
       const pdfFile = formData.get("pdf");
 
@@ -38,40 +47,22 @@ export async function POST(request) {
         );
       }
 
-      // ✅ Rebuild FormData untuk dikirim ke VPS
-      // Next.js FormData tidak bisa langsung di-forward,
-      // harus rebuild dengan field yang sama
       const vpsFormData = new FormData();
-      vpsFormData.append("pdf", pdfFile); // File object langsung
+      vpsFormData.append("pdf", pdfFile);
 
-      // Forward semua field lain kecuali "pdf"
       for (const [key, value] of formData.entries()) {
         if (key !== "pdf") {
           vpsFormData.append(key, value);
         }
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
       const response = await fetch(`${NEXT_PUBLIC_VPS_API_URL}/api/print`, {
         method: "POST",
-        // ✅ JANGAN set Content-Type - biarkan fetch set multipart boundary otomatis
         body: vpsFormData,
-        signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ VPS error response:", errorText);
-        throw new Error(
-          `VPS returned ${response.status}: ${response.statusText}`,
-        );
-      }
-
-      return NextResponse.json(await response.json());
+      const result = await response.json();
+      return NextResponse.json(result, { status: response.status });
     } else {
       return NextResponse.json(
         { success: false, error: "Unsupported content type" },
@@ -79,19 +70,11 @@ export async function POST(request) {
       );
     }
   } catch (error) {
-    console.error("❌ Print API error:", error);
-
-    let errorMessage = error.message;
-    if (error.name === "AbortError") {
-      errorMessage = "VPS timeout - server tidak merespons";
-    } else if (error.message.includes("fetch failed")) {
-      errorMessage = "Tidak dapat terhubung ke server print";
-    }
-
+    console.error("❌ [PROXY] Error:", error);
     return NextResponse.json(
       {
         success: false,
-        error: errorMessage,
+        error: error.message,
         details:
           "Pastikan VPS server sedang running dan endpoint /api/print tersedia",
       },

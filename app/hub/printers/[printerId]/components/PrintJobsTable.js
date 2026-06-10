@@ -1,9 +1,8 @@
-// app/hub/printers/[printerId]/components/PrintJobsTable.js
 "use client";
 
 import { Pagination } from "./Pagination";
 
-// 🥸PrintJobsTable /app/hub/printers/[printerId]/components/PrintJobsTable.js TERPAKAI
+// PrintJobsTable - UPDATED dengan struktur baru
 export const PrintJobsTable = ({
   jobs,
   refills,
@@ -37,6 +36,39 @@ export const PrintJobsTable = ({
     );
   }
 
+  // Helper untuk mendapatkan total biaya (kompatibel dengan struktur lama dan baru)
+  const getJobTotalCost = (job) => {
+    return job.priceCalculation?.finalPrice || job.totalCost || 0;
+  };
+
+  // Helper untuk mendapatkan profit partner (keuntungan dari ownerPrices)
+  const getPartnerProfit = (job) => {
+    // Prioritas: dari priceCalculation.ownerPrice
+    if (job.priceCalculation?.ownerPrice) {
+      return job.priceCalculation.ownerPrice;
+    }
+    // Fallback: dari partnerProfit (struktur lama)
+    if (job.partnerProfit) {
+      return job.partnerProfit;
+    }
+    // Fallback terakhir: hitung dari totalCost dan refill (legacy)
+    const refill = refills.find((r) => r.refillId === job.refillId);
+    if (refill?.profitShare && job.totalCost) {
+      return (job.totalCost * refill.profitShare) / 100;
+    }
+    return 0;
+  };
+
+  // Helper untuk mendapatkan nama file
+  const getFileName = (job) => {
+    return job.fileName || "Unknown File";
+  };
+
+  // Helper untuk mendapatkan nomor telepon
+  const getPhoneNumber = (job) => {
+    return job.customerPhone || job.phoneNumber || "-";
+  };
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-4 sm:p-6 border-b border-gray-200">
@@ -44,7 +76,6 @@ export const PrintJobsTable = ({
           <h2 className="text-lg font-semibold text-gray-800">
             🖨️ Riwayat Print Jobs
           </h2>
-          {/* Info jumlah data */}
           {totalItems > 0 && (
             <p className="text-sm text-gray-500">
               Total {totalItems} print jobs
@@ -70,7 +101,7 @@ export const PrintJobsTable = ({
                 Total
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Profit Anda
+                Profit Partner
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Refill
@@ -80,6 +111,9 @@ export const PrintJobsTable = ({
           <tbody className="divide-y divide-gray-200">
             {jobs.map((job) => {
               const refill = refills.find((r) => r.refillId === job.refillId);
+              const partnerProfit = getPartnerProfit(job);
+              const totalCost = getJobTotalCost(job);
+
               return (
                 <tr key={job.jobId} className="hover:bg-gray-50">
                   <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
@@ -87,22 +121,20 @@ export const PrintJobsTable = ({
                   </td>
                   <td className="px-4 sm:px-6 py-3">
                     <div className="text-sm font-medium text-gray-800">
-                      {job.fileName}
+                      {getFileName(job)}
                     </div>
                     <div className="text-xs text-gray-400">
-                      {job.phoneNumber}
+                      {getPhoneNumber(job)}
                     </div>
                   </td>
                   <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
-                    {job.totalPages} lbr
+                    {job.totalPages || 0} lbr
                   </td>
                   <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-800">
-                    {formatRupiah(job.totalCost)}
+                    {formatRupiah(totalCost)}
                   </td>
                   <td className="px-4 sm:px-6 py-3 text-sm font-medium text-green-600">
-                    {formatRupiah(
-                      (job.totalCost * (refill?.profitShare || 30)) / 100,
-                    )}
+                    {formatRupiah(partnerProfit)}
                   </td>
                   <td className="px-4 sm:px-6 py-3">
                     {refill && (
@@ -121,7 +153,7 @@ export const PrintJobsTable = ({
         </table>
       </div>
 
-      {/* ✅ Pagination Component */}
+      {/* Pagination Component */}
       {totalPages > 1 && (
         <div className="border-t border-gray-200">
           <Pagination

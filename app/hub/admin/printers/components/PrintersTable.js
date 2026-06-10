@@ -1,8 +1,9 @@
+// app/hub/admin/printers/components/PrintersTable.js
 "use client";
 import CustomLink from "@/app/components/CustomLink";
 import { useState } from "react";
+import { PrinterSyncModal } from "./PrinterSyncModal";
 
-// 🥸PrintersTable /app/hub/admin/components/PrintersTable.js TERPAKAI
 export const PrintersTable = ({
   printers,
   onEdit,
@@ -12,10 +13,12 @@ export const PrintersTable = ({
   pagination,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPrinter, setSelectedPrinter] = useState(null);
+  const [showSyncModal, setShowSyncModal] = useState(false);
 
   const filteredPrinters = printers.filter(
     (printer) =>
-      printer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (printer.printerName || printer.name)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       printer.printerId?.includes(searchTerm) ||
       printer.location?.city?.includes(searchTerm),
   );
@@ -33,6 +36,11 @@ export const PrintersTable = ({
         Offline
       </span>
     );
+  };
+
+  const handleSync = (printer) => {
+    setSelectedPrinter(printer);
+    setShowSyncModal(true);
   };
 
   return (
@@ -54,7 +62,6 @@ export const PrintersTable = ({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search Input Container - akan mengambil sisa ruang */}
             <div className="flex-1 min-w-0">
               <div className="relative">
                 <input
@@ -80,7 +87,6 @@ export const PrintersTable = ({
               </div>
             </div>
 
-            {/* Tombol Container */}
             <div className="flex-shrink-0">
               <button
                 onClick={onCreate}
@@ -118,7 +124,10 @@ export const PrintersTable = ({
                 ID
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Lokasi
+                Raspberry Pi
+              </th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                USB ID
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -142,7 +151,7 @@ export const PrintersTable = ({
                     href={`/hub/printers/${printer.printerId}`}
                     className="text-sm font-medium text-blue-500 hover:underline"
                   >
-                    {printer.name}
+                    {printer.printerName}
                   </CustomLink>
                 </td>
                 <td className="px-4 sm:px-6 py-3">
@@ -150,8 +159,23 @@ export const PrintersTable = ({
                     {printer.printerId}
                   </div>
                 </td>
-                <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
-                  {printer.location?.city || "-"}
+                <td className="px-4 sm:px-6 py-3">
+                  {printer.raspberryId ? (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                      {printer.raspberryId}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">Not assigned</span>
+                  )}
+                </td>
+                <td className="px-4 sm:px-6 py-3">
+                  {printer.usbDeviceId ? (
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
+                      {printer.usbDeviceId}
+                    </code>
+                  ) : (
+                    <span className="text-xs text-gray-400">Unknown</span>
+                  )}
                 </td>
                 <td className="px-4 sm:px-6 py-3">
                   {getStatusBadge(printer.status)}
@@ -164,6 +188,27 @@ export const PrintersTable = ({
                 </td>
                 <td className="px-4 sm:px-6 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {/* Tombol Sinkronisasi */}
+                    <button
+                      onClick={() => handleSync(printer)}
+                      className="p-1 text-green-600 hover:bg-green-50 rounded"
+                      title="Sinkronisasi dengan Raspberry Pi"
+                      disabled={!printer.raspberryId}
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                    </button>
                     <button
                       onClick={() => onEdit(printer)}
                       className="p-1 text-blue-600 hover:bg-blue-50 rounded"
@@ -228,6 +273,13 @@ export const PrintersTable = ({
           <p className="text-gray-500">Tidak ada printer ditemukan</p>
         </div>
       )}
+
+      {/* Modal Sinkronisasi */}
+      <PrinterSyncModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+        printer={selectedPrinter}
+      />
     </div>
   );
 };

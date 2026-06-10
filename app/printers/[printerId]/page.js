@@ -1,4 +1,4 @@
-// app/printers/[printerId]/page.js
+// app/printers/[printerId]/page.js (Frontend Next.js)
 "use client";
 import { usePrinterPage } from "./hooks/usePrinterPage";
 import { PrinterHeader } from "./components/PrinterHeader";
@@ -9,6 +9,7 @@ import { TotalCostSection } from "./components/TotalCostSection";
 import { SubmitButton } from "./components/SubmitButton";
 import dynamic from "next/dynamic";
 import PaymentModal from "@/app/printers/[printerId]/components/PaymentModal";
+import PaperSizeTutorialModal from "@/app/printers/[printerId]/components/PaperSizeTutorialModal";
 import BottomBar from "@/app/components/BottomBar";
 import TopBar from "@/app/components/TopBar";
 import LoadingAnimation from "@/app/components/LoadingAnimation";
@@ -26,7 +27,7 @@ const PageSelector = dynamic(
   },
 );
 
-// PrinterPage TERPAKAI
+// PrinterPage - UPDATED dengan finalPrices
 export default function PrinterPage() {
   const {
     // States
@@ -50,7 +51,15 @@ export default function PrinterPage() {
     isPaperInsufficient,
     availablePaper,
     totalPagesNeeded,
-    prices,
+    finalPrices,
+    enabledFeatures,
+    volumeDiscounts,
+    currentPrintJobId,
+    showPaperSizeModal,
+    setShowPaperSizeModal,
+    videoGuides,
+    detectedPDFSize,
+    isPaperSizeMismatch,
 
     // Functions
     handleFileUpload,
@@ -64,6 +73,7 @@ export default function PrinterPage() {
     refreshPendingTransactions,
     handleContinuePendingTransaction,
     handleCancelPendingTransaction,
+    handleDeleteFailedTransaction,
     handlePhoneNumberChange,
   } = usePrinterPage();
 
@@ -71,7 +81,8 @@ export default function PrinterPage() {
     return <LoadingAnimation />;
   }
 
-  if (!prices) {
+  // ✅ UPDATE: Gunakan finalPrices untuk validasi loading
+  if (!finalPrices) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
@@ -105,7 +116,10 @@ export default function PrinterPage() {
                       initialSettings={advancedSettings}
                       onSettingsChange={handleSettingsChange}
                       file={file}
-                      prices={prices}
+                      finalPrices={finalPrices}
+                      enabledFeatures={enabledFeatures}
+                      volumeDiscounts={volumeDiscounts}
+                      detectedPDFSize={detectedPDFSize}
                     />
                   </div>
                 )}
@@ -133,15 +147,17 @@ export default function PrinterPage() {
                   onRefresh={refreshPendingTransactions}
                   onContinue={handleContinuePendingTransaction}
                   onCancel={handleCancelPendingTransaction}
+                  onDelete={handleDeleteFailedTransaction}
                   isLoading={isLoading}
                   isPrinterOffline={isPrinterOffline}
                   isPaperInsufficient={isPaperInsufficient}
+                  paperMode={printer?.paperMode || "limited"}
                 />
 
                 <TotalCostSection
                   advancedSettings={advancedSettings}
                   totalPages={totalPages}
-                  prices={prices}
+                  finalPrices={finalPrices} // ✅ Ganti prices → finalPrices
                 />
 
                 <SubmitButton
@@ -153,6 +169,10 @@ export default function PrinterPage() {
                   isPaperInsufficient={isPaperInsufficient}
                   availablePaper={availablePaper}
                   totalPagesNeeded={totalPagesNeeded}
+                  paperMode={printer?.paperMode || "limited"}
+                  isPaperSizeMismatch={isPaperSizeMismatch}
+                  printerActivePaperSize={printer?.paperStatus?.activePaperSize}
+                  detectedPDFSize={detectedPDFSize}
                 />
               </form>
             </div>
@@ -169,6 +189,14 @@ export default function PrinterPage() {
           isLoading={isLoading}
           userSession={userSession}
           isRestoredTransaction={paymentData?.isRestored || false}
+          currentPrintJobId={currentPrintJobId}
+        />
+
+        <PaperSizeTutorialModal
+          isOpen={showPaperSizeModal}
+          onConfirm={() => setShowPaperSizeModal(false)}
+          detectedSize={detectedPDFSize}
+          videoGuides={videoGuides}
         />
       </div>
       <BottomBar />

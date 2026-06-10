@@ -1,4 +1,4 @@
-// DI FRONTEND: Proxy API untuk printers
+// /app/api/printers/route.js
 import { NextResponse } from "next/server";
 
 const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
@@ -15,13 +15,6 @@ export async function GET(request) {
     if (printerId) {
       apiUrl += `/${printerId}`;
     }
-
-    // Jika ada location params, get nearby printers
-    // const lat = searchParams.get("lat");
-    // const lng = searchParams.get("lng");
-    // if (lat && lng) {
-    //   apiUrl = `${NEXT_PUBLIC_VPS_API_URL}/api/printers/nearby/location?lat=${lat}&lng=${lng}`;
-    // }
 
     const response = await fetch(apiUrl);
     const data = await response.json();

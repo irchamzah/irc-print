@@ -1,9 +1,9 @@
-// app/hub/printers/[printerId]/hooks/useHubData.js
+// app/hub/printers/[printerId]/hooks/useHubData.js - SUDAH DIUPDATE
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useHubAuth } from "../../../auth/hooks/useHubAuth";
 
-// 🥸useHubData /app/hub/printers/[printerId]/hooks/useHubData.js TERPAKAI
+// useHubData - UPDATED dengan struktur baru
 export const useHubData = (
   printerId,
   initialRefillsPage = 1,
@@ -139,7 +139,7 @@ export const useHubData = (
         }
       }
 
-      // Fetch semua data untuk periode terpilih (bukan paginated) untuk total profit dan pending payout
+      // Fetch semua data untuk periode terpilih
       const allRefillsUrl = `/api/hub/printers/${printerId}/refills?page=1&limit=100000${
         dateRange.startDate && dateRange.endDate
           ? `&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`
@@ -153,7 +153,6 @@ export const useHubData = (
         if (allRefillsData.success) {
           setAllPaperRefills(allRefillsData.data);
 
-          // Gunakan count berdasarkan data penuh (all refills) yang sudah difilter date range untuk akurasi pagination
           const allFilteredRefills = filterRefillsByDateRange(
             allRefillsData.data,
           );
@@ -213,64 +212,39 @@ export const useHubData = (
     setJobsCurrentPage(1);
   }, [printerId]);
 
-  const handleRefillPaper = async () => {
+  const handleRefillPaper = async (sheetsAdded = 80) => {
     try {
-      // ✅ Validasi stok
-      if (printer?.paperStatus?.paperCount > 100) {
-        return {
-          success: false,
-          error: "Stok kertas sudah penuh (lebih dari 100 lembar).",
-        };
-      }
-
-      const response = await fetch(`/api/hub/printers/${printerId}/refills`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}/refills`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sheetsAdded }),
         },
-        body: JSON.stringify({ sheetsAdded: 80 }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`,
-        );
-      }
+      );
 
       const result = await response.json();
 
       if (result.success) {
-        // ✅ Update paperCount secara langsung di state
-        const sheetsAdded = 80;
-        const currentCount = printer?.paperStatus?.paperCount || 0;
-        const newCount = currentCount + sheetsAdded;
-
-        setPrinter((prev) => ({
-          ...prev,
-          paperStatus: {
-            ...prev?.paperStatus,
-            paperCount: newCount,
-            lastRefill: new Date().toISOString(),
-            available: newCount > 0,
-            estimatedPages: newCount,
-          },
-        }));
-
-        // ✅ Opsional: refresh data lain jika diperlukan
-        // await fetchAllData(); // Hapus komentar jika perlu refresh data lain
-
-        return { success: true, data: result.data };
+        window.location.reload();
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          error: result.error || "Gagal mengisi kertas",
+        };
       }
-      return { success: false, error: result.error };
     } catch (error) {
-      console.error("❌ Error in handleRefillPaper:", error);
+      console.error("Error refilling paper:", error);
       return { success: false, error: error.message };
     }
   };
 
-  const markRefillAsPaid = async (refillId) => {
+  // ✅ Update markRefillAsPaid menggunakan paperRefillId
+  const markRefillAsPaid = async (paperRefillId) => {
     if (user?.role !== "super_admin") {
       return {
         success: false,
@@ -280,7 +254,7 @@ export const useHubData = (
 
     try {
       const response = await fetch(
-        `/api/hub/admin/paper-refills/${refillId}/pay`,
+        `/api/hub/admin/paper-refills/${paperRefillId}/pay`,
         {
           method: "POST",
           headers: {
@@ -306,11 +280,12 @@ export const useHubData = (
     }
   };
 
-  const getJobsByRefill = (refillId) => {
-    return printJobs.filter((job) => job.refillId === refillId);
+  // ✅ Update getJobsByRefill menggunakan paperRefillId
+  const getJobsByRefill = (paperRefillId) => {
+    return printJobs.filter((job) => job.paperRefillId === paperRefillId);
   };
 
-  // ✅ Filter functions untuk profit calculation
+  // Filter functions untuk profit calculation
   const filterJobsByDateRange = (jobs) => {
     if (!dateRange.startDate || !dateRange.endDate) return jobs;
 
@@ -355,37 +330,46 @@ export const useHubData = (
     });
   };
 
-  // ✅ Data yang sudah difilter untuk page table
+  // Data yang sudah difilter untuk page table
   const filteredJobs = filterJobsByDateRange(printJobs);
   const filteredRefills = filterRefillsByDateRange(paperRefills);
 
-  // ✅ Data yang sudah difilter untuk total (semua record dalam periode)
-  // const filteredAllJobs = filterJobsByDateRange(allPrintJobs);
+  // Data yang sudah difilter untuk total (semua record dalam periode)
   const filteredAllRefills = filterRefillsByDateRange(allPaperRefills);
 
-  // ✅ Hitung profit dari data semua periode terfilter, tidak bergantung pada halaman sekarang
+  // ✅ Hitung profit dari data semua periode terfilter
   const totalRevenue = filteredAllRefills.reduce(
     (sum, refill) => sum + (refill.totalRevenue || 0),
     0,
   );
 
-  const totalProfit = filteredAllRefills.reduce(
+  // ✅ Partner profit dari semua refills
+  const totalPartnerProfit = filteredAllRefills.reduce(
     (sum, refill) => sum + (refill.partnerProfit || 0),
     0,
   );
 
+  // ✅ Platform profit dari semua refills
+  const totalPlatformProfit = filteredAllRefills.reduce(
+    (sum, refill) => sum + (refill.platformProfit || 0),
+    0,
+  );
+
+  // ✅ Pending payout (active refills) - partner profit
   const pendingPayout = filteredAllRefills
-    .filter((r) => r.status === "active")
+    .filter((r) => r.status === "active" || r.status === "completed")
     .reduce((sum, r) => sum + (r.partnerProfit || 0), 0);
 
-  // ✅ Profit share dari semua refills terfilter (atau default 30)
-  const profitShare = filteredAllRefills[0]?.profitShare || 30;
+  const paidProfit = filteredAllRefills
+    .filter((r) => r.status === "paid")
+    .reduce((sum, r) => sum + (r.partnerProfit || 0), 0);
 
   const profit = {
     totalRevenue,
-    profitShare,
-    partnerProfit: totalProfit,
+    partnerProfit: totalPartnerProfit,
+    platformProfit: totalPlatformProfit,
     pendingPayout,
+    paidProfit,
   };
 
   const formatRupiah = (amount) => {
@@ -441,9 +425,10 @@ export const useHubData = (
     filteredJobs,
     filteredRefills,
 
-    // ✅ Profit yang sudah dihitung dari data terfilter
+    // Profit yang sudah dihitung dari data terfilter
     filteredTotalRevenue: totalRevenue,
-    filteredPartnerProfit: totalProfit,
+    filteredPartnerProfit: totalPartnerProfit,
+    filteredPlatformProfit: totalPlatformProfit,
     profit,
 
     dateRange,

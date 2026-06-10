@@ -1,13 +1,13 @@
-// app/api/payment/status/route.js (FRONTEND Next.js)
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 
-// 🌐GET /app/api/payment/status/route.js TERPAKAI
+// GET /app/api/payment/status/route.js
 export async function GET(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const orderId = searchParams.get("orderId");
+  // ✅ Deklarasikan orderId di luar try-catch agar bisa diakses di catch
+  const { searchParams } = new URL(request.url);
+  const orderId = searchParams.get("orderId");
 
+  try {
     if (!orderId) {
       return NextResponse.json(
         { error: "Order ID is required" },
@@ -23,13 +23,12 @@ export async function GET(request) {
       ? process.env.MIDTRANS_SERVER_KEY_PRODUCTION
       : process.env.MIDTRANS_SERVER_KEY_SANDBOX;
 
-    // VALIDASI SERVER KEY
     if (!serverKey) {
       console.error("❌ Midtrans server key is missing");
       return NextResponse.json(
         {
           success: false,
-          error: "Midtrans configuration error: Server key is missing",
+          error: "Midtrans configuration error",
           environment: midtransEnvironment,
         },
         { status: 500 },
@@ -49,7 +48,6 @@ export async function GET(request) {
         setTimeout(() => reject(new Error("Midtrans timeout")), 10000),
       ),
     ]);
-    console.log("✅ Midtrans status response:", statusResponse);
 
     return NextResponse.json({
       success: true,
@@ -63,20 +61,47 @@ export async function GET(request) {
       currency: statusResponse.currency,
     });
   } catch (error) {
-    console.error("❌ Payment status check error:", error);
+    console.error("❌ Payment status check error:", error.message);
 
-    // Berikan error message yang lebih spesifik
-    let errorMessage = error.message;
-    if (error.message.includes("timeout")) {
-      errorMessage = "Midtrans server timeout. Please try again.";
-    } else if (error.message.includes("not found")) {
-      errorMessage = "Transaction not found in Midtrans.";
+    // ✅ Handle "Transaction doesn't exist" dengan response yang ramah
+    if (
+      error.message?.includes("Transaction doesn't exist") ||
+      error.message?.includes("404")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "pending",
+          orderId: orderId,
+          message: "Transaction not yet created in Midtrans",
+          friendlyMessage:
+            "Transaksi belum dibuat. Silakan lanjutkan pembayaran.",
+        },
+        { status: 200 },
+      );
     }
 
+    // Handle timeout
+    if (error.message?.includes("timeout")) {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "pending",
+          orderId: orderId,
+          message: "Midtrans timeout",
+          friendlyMessage:
+            "Waktu habis saat menghubungi server pembayaran. Silakan coba lagi.",
+        },
+        { status: 200 },
+      );
+    }
+
+    // Error lainnya
     return NextResponse.json(
       {
         success: false,
-        error: errorMessage,
+        error: error.message,
+        orderId: orderId,
         environment: process.env.NEXT_PUBLIC_MIDTRANS_ENVIRONMENT,
       },
       { status: 500 },

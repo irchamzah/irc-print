@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
-// 🌐GET /app/api/hub/printers/[printerId]/jobs TERPAKAI
+// GET /app/api/hub/printers/[printerId]/jobs
 export async function GET(request, { params }) {
   try {
     const { printerId } = await params;
@@ -23,8 +23,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Fetch dari VPS API
-    const response = await fetch(`${NEXT_PUBLIC_VPS_API_URL}/api/print/jobs`, {
+    // ✅ UPDATE: Gunakan endpoint baru di VPS
+    let url = `${NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}/jobs?skip=${skip}&limit=${limit}`;
+    if (startDate) url += `&startDate=${startDate}`;
+    if (endDate) url += `&endDate=${endDate}`;
+
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -38,44 +42,21 @@ export async function GET(request, { params }) {
     const data = await response.json();
 
     if (data.success) {
-      // Filter jobs untuk printer ini
-      let printerJobs = data.jobs.filter((job) => job.printerId === printerId);
-
-      // Filter berdasarkan tanggal jika ada
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-
-        printerJobs = printerJobs.filter((job) => {
-          const jobDate = new Date(job.createdAt);
-          return jobDate >= start && jobDate <= end;
-        });
-      }
-
-      // Urutkan dari terbaru
-      printerJobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      // Hitung total untuk pagination
-      const total = printerJobs.length;
-
-      // Ambil data sesuai page
-      const paginatedJobs = printerJobs.slice(skip, skip + limit);
-
       return NextResponse.json({
         success: true,
-        data: paginatedJobs,
-        pagination: {
+        data: data.data,
+        pagination: data.pagination || {
           page,
           limit,
-          total,
-          hasMore: skip + limit < total,
+          total: data.data.length,
+          hasMore:
+            skip + data.data.length <
+            (data.pagination?.total || data.data.length),
         },
       });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("❌ Error in /api/hub/printers/[printerId]/jobs:", error);
     return NextResponse.json(

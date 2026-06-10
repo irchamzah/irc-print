@@ -1,6 +1,6 @@
 // app/printers/[printerId]/hooks/useFileManagement.js
 import { useState } from "react";
-import { getPDFPageCount, validatePDFFile } from "../../../../utils/pdfUtils";
+import { getPDFPageCount, validatePDFFile, detectPDFPageSize } from "../../../../utils/pdfUtils";
 
 // useFileManagement TERPAKAI
 export const useFileManagement = () => {
@@ -19,6 +19,7 @@ export const useFileManagement = () => {
     cost: 0,
   });
   const [totalPages, setTotalPages] = useState(0);
+  const [detectedPDFSize, setDetectedPDFSize] = useState(null);
 
   // 🌐 handleFileUpload /app/printers/[printerId]/hooks/useFileManagement.js TERPAKAI
   const handleFileUpload = async (selectedFile, setIsLoading) => {
@@ -30,9 +31,18 @@ export const useFileManagement = () => {
 
     setIsLoading(true);
     try {
-      const pageCount = await getPDFPageCount(selectedFile);
+      const [pageCount, detectedSize] = await Promise.all([
+        getPDFPageCount(selectedFile),
+        detectPDFPageSize(selectedFile),
+      ]);
       setTotalPages(pageCount);
       setFile(selectedFile);
+
+      const paperSize = detectedSize || "A4";
+      setDetectedPDFSize(detectedSize);
+      if (detectedSize) {
+        console.log(`📄 Ukuran kertas terdeteksi: ${detectedSize}`);
+      }
 
       const defaultColorPages = [1];
       const defaultBwPages = Array.from(
@@ -45,13 +55,14 @@ export const useFileManagement = () => {
         bwPages: defaultBwPages,
         copies: 1,
         printSettings: {
-          paperSize: "A4",
+          paperSize,
           orientation: "PORTRAIT",
           quality: "NORMAL",
           margins: "NORMAL",
           duplex: false,
         },
         cost: 0,
+        _uploadKey: Date.now(),
       };
 
       setAdvancedSettings(initialSettings);
@@ -75,11 +86,13 @@ export const useFileManagement = () => {
     file,
     advancedSettings,
     totalPages,
+    detectedPDFSize,
 
     // Setters
     setFile,
     setAdvancedSettings,
     setTotalPages,
+    setDetectedPDFSize,
 
     // Functions
     handleFileUpload,

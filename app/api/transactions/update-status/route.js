@@ -1,4 +1,4 @@
-// app/api/transactions/update-status/route.js (FRONTEND Next.js)
+// app/api/transactions/update-status/route.js
 import { NextResponse } from "next/server";
 
 const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;

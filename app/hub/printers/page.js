@@ -1,72 +1,77 @@
-// app/hub/printers/page.js
 "use client";
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useHubAuth } from "../auth/hooks/useHubAuth";
+import { usePartnerPrinters } from "./hooks/usePartnerPrinters";
 import { PrinterGrid } from "./components/PrinterGrid";
+import { PrinterStatsFilter } from "./components/PrinterStatsFilter";
+import { WithdrawalModal } from "./components/WithdrawalModal";
 import { HubLayout } from "../components/HubLayout";
 import CustomLink from "@/app/components/CustomLink";
 import LoadingAnimation from "@/app/components/LoadingAnimation";
 
-const API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
-
-// PrintersPage TERPAKAI
 export default function PrintersPage() {
+  const router = useRouter();
   const { user, token, isAuthenticated } = useHubAuth();
-  const [printers, setPrinters] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    printers,
+    profitStats,
+    loading,
+    error,
+    filters,
+    setFilters,
+    refresh,
+    formatDate,
+    formatRupiah,
+    formatNumber,
+  } = usePartnerPrinters();
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [withdrawProcessing, setWithdrawProcessing] = useState(false);
+  const [minWithdrawalAmount, setMinWithdrawalAmount] = useState(100000);
 
   useEffect(() => {
-    if (isAuthenticated() && token) {
-      fetchPrinters();
-    }
+    if (!token) return;
+    fetch("/api/hub/admin/platform-settings", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setMinWithdrawalAmount(
+            data.data.withdrawalConfig?.minWithdrawalAmount ?? 100000,
+          );
+        }
+      })
+      .catch(() => {});
   }, [token]);
 
-  const fetchPrinters = async () => {
-    setLoading(true);
-    setError(null);
-
+  const handleWithdraw = async (withdrawalData) => {
+    setWithdrawProcessing(true);
     try {
-      // ✅ Ganti dengan internal API route
-      const response = await fetch("/api/hub/printers", {
+      const response = await fetch("/api/hub/partner-withdrawals", {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          totalAmount: profitStats.totalPendingPayout,
+          notes: withdrawalData.notes,
+          bankAccount: withdrawalData.bankAccount,
+        }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        setPrinters(data.data);
+      const result = await response.json();
+      if (result.success) {
+        setShowWithdrawalModal(false);
+        router.push("/hub/partner-withdrawals");
       } else {
-        setError(data.error || "Failed to fetch printers");
+        alert("❌ Gagal: " + result.error);
       }
-    } catch (err) {
-      console.error("❌ Error fetching printers:", err);
-      setError(err.message || "Failed to fetch printers");
+    } catch (error) {
+      alert("❌ Error: " + error.message);
     } finally {
-      setLoading(false);
+      setWithdrawProcessing(false);
     }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatNumber = (num) => {
-    return new Intl.NumberFormat("id-ID").format(num || 0);
   };
 
   if (!isAuthenticated()) {
@@ -120,7 +125,7 @@ export default function PrintersPage() {
             </h3>
             <p className="text-gray-600 mb-4">{error}</p>
             <button
-              onClick={fetchPrinters}
+              onClick={refresh}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Coba Lagi
@@ -151,6 +156,14 @@ export default function PrintersPage() {
               ← Kembali
             </CustomLink>
           </div>
+
+          <PrinterStatsFilter
+            profitStats={profitStats}
+            filters={filters}
+            onFilterChange={setFilters}
+            onRefresh={refresh}
+            onWithdraw={() => setShowWithdrawalModal(true)}
+          />
 
           {printers.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
@@ -183,6 +196,15 @@ export default function PrintersPage() {
           )}
         </div>
       </div>
+
+      <WithdrawalModal
+        isOpen={showWithdrawalModal}
+        onClose={() => setShowWithdrawalModal(false)}
+        onSubmit={handleWithdraw}
+        totalAmount={profitStats.totalPendingPayout}
+        processing={withdrawProcessing}
+        minWithdrawalAmount={minWithdrawalAmount}
+      />
     </HubLayout>
   );
 }

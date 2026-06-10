@@ -1,7 +1,6 @@
-// app/hub/[printerId]/components/RefillDetailModal.js
 "use client";
 
-// RefillDetailModal TERPAKAI
+// RefillDetailModal - UPDATED dengan struktur baru (tanpa upload proof)
 export const RefillDetailModal = ({
   isOpen,
   refill,
@@ -22,31 +21,59 @@ export const RefillDetailModal = ({
         );
       case "completed":
         return (
-          <span className="text-sm px-3 py-1 rounded-full bg-blue-100 text-blue-700 ">
+          <span className="text-sm px-3 py-1 rounded-full bg-blue-100 text-blue-700">
             Selesai
           </span>
         );
       case "paid":
         return (
-          <span className="text-sm px-3 py-1 rounded-full bg-purple-100 text-purple-700 ">
+          <span className="text-sm px-3 py-1 rounded-full bg-purple-100 text-purple-700">
             Dibayar
           </span>
         );
       default:
         return (
-          <span className="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-700 ">
+          <span className="text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-700">
             {status}
           </span>
         );
     }
   };
 
-  const handleViewProof = (refill) => {
-    if (refill.transferProof) {
-      const imageUrl = `${process.env.NEXT_PUBLIC_VPS_API_URL}${refill.transferProof.url}`;
-      window.open(imageUrl, "_blank");
-    }
+  // Helper untuk mendapatkan total biaya job
+  const getJobTotalCost = (job) => {
+    return job.priceCalculation?.finalPrice || job.totalCost || 0;
   };
+
+  // Helper untuk mendapatkan profit partner dari job
+  const getJobPartnerProfit = (job) => {
+    return job.priceCalculation?.partnerProfit || job.partnerProfit || 0;
+  };
+
+  // Helper untuk mendapatkan nama file
+  const getFileName = (job) => {
+    return job.fileName || "Unknown File";
+  };
+
+  // Helper untuk mendapatkan nomor telepon customer
+  const getCustomerPhone = (job) => {
+    return job.customerPhone || job.phoneNumber || "-";
+  };
+
+  // Helper untuk mendapatkan total halaman
+  const getTotalPages = (job) => {
+    const pages =
+      job.totalPages || job.settings?.totalPages || job.pages?.length || 0;
+    const copies = job.settings?.copies || 1;
+    return pages;
+  };
+
+  // Helper untuk mendapatkan printJobId
+  const getPrintJobId = (job) => {
+    return job.printJobId || job.jobId || job.id;
+  };
+
+  const isAdmin = userRole === "admin" || userRole === "super_admin";
 
   if (!isOpen || !refill) return null;
 
@@ -86,7 +113,7 @@ export const RefillDetailModal = ({
         {/* Modal Content */}
         <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh]">
           {/* Info Refill */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-gray-50 p-3 rounded-lg">
               <p className="text-xs text-gray-500">Kertas Ditambah</p>
               <p className="text-lg font-bold text-gray-800">
@@ -105,12 +132,6 @@ export const RefillDetailModal = ({
                 {refill.paperCountAfter}
               </p>
             </div>
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-xs text-gray-500">Share Profit</p>
-              <p className="text-lg font-bold text-green-600">
-                {refill.profitShare}%
-              </p>
-            </div>
           </div>
 
           {/* Summary */}
@@ -127,56 +148,29 @@ export const RefillDetailModal = ({
                 {formatRupiah(refill.partnerProfit)}
               </span>
             </div>
+            {isAdmin && (
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-sm text-gray-600">Profit Platform:</span>
+                <span className="text-lg font-bold text-blue-600">
+                  {formatRupiah(refill.platformProfit)}
+                </span>
+              </div>
+            )}
             <div className="mt-3 pt-3 border-t border-blue-200 flex justify-between items-center">
               <div>
                 {getStatusBadge(refill.status)}
                 {refill.status === "active" && (
-                  <span className="text-xs text-green-600 animate-pulse">
+                  <span className="text-xs text-green-600 animate-pulse ml-2">
                     ● Menerima profit
                   </span>
                 )}
               </div>
-              {refill.transferProof ? (
-                <button
-                  onClick={() => handleViewProof(refill)}
-                  className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                  title="Lihat Bukti"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
-                  Lihat
-                </button>
-              ) : refill.status === "paid" ? (
-                <span className="text-xs text-gray-400">Tidak ada</span>
-              ) : (
-                <span className="text-xs text-gray-400">-</span>
-              )}
 
-              {/* Tombol Bayar untuk Admin */}
-              {userRole === "super_admin" && refill.status !== "paid" && (
-                <button
-                  onClick={() => onMarkAsPaid(refill)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                >
-                  Tandai Dibayar
-                </button>
+              {/* ✅ Tampilkan info siapa yang membayar jika status paid */}
+              {refill.status === "paid" && refill.paidByName && (
+                <p className="text-xs text-gray-500">
+                  Dibayar oleh: {refill.paidByName}
+                </p>
               )}
             </div>
           </div>
@@ -189,14 +183,16 @@ export const RefillDetailModal = ({
           <div className="space-y-3">
             {jobs?.map((job) => (
               <div
-                key={job.jobId}
+                key={getPrintJobId(job)}
                 className="border border-gray-200 rounded-lg p-3"
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-medium text-gray-800">{job.fileName}</p>
+                    <p className="font-medium text-gray-800">
+                      {getFileName(job)}
+                    </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {job.phoneNumber || "No phone"}
+                      {getCustomerPhone(job)}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       {formatDate(job.createdAt)}
@@ -204,15 +200,19 @@ export const RefillDetailModal = ({
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-800">
-                      {formatRupiah(job.totalCost)}
+                      {formatRupiah(getJobTotalCost(job))}
                     </p>
                     <p className="text-xs text-green-600 mt-1">
-                      Profit: {formatRupiah(job.partnerProfit || 0)}
+                      Profit Partner: {formatRupiah(getJobPartnerProfit(job))}
                     </p>
                   </div>
                 </div>
                 <div className="mt-2 text-xs text-gray-400">
-                  {job.totalPages} halaman
+                  {getTotalPages(job)} halaman
+                  {job.settings?.paperSize &&
+                    ` • Ukuran: ${job.settings.paperSize}`}
+                  {job.settings?.quality &&
+                    ` • Kualitas: ${job.settings.quality}`}
                 </div>
               </div>
             ))}

@@ -1,8 +1,8 @@
-// app/printers/[printerId]/hooks/useUserManagement.js
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import { normalizePhoneNumber } from "@/utils/normalizePhone";
 
-// useUserManagement TERPAKAI
+// useUserManagement - UPDATED dengan normalisasi nomor
 export const useUserManagement = () => {
   const params = useParams();
   const printerId = params?.printerId;
@@ -13,26 +13,25 @@ export const useUserManagement = () => {
   const [refreshingPoints, setRefreshingPoints] = useState(false);
   const [userSession, setUserSession] = useState(null);
 
-  // 🌐 getPrinterPointDivider /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
+  // ============================================
+  // getPrinterPointDivider
+  // ============================================
   const getPrinterPointDivider = async () => {
     try {
       const cached = localStorage.getItem(`printer_${printerId}_pointDivider`);
 
       if (cached) {
         const { value, timestamp } = JSON.parse(cached);
-        // Cache selama 1 jam
         if (Date.now() - timestamp < 60 * 60 * 1000) {
           return value;
         }
       }
 
-      // Ambil dari API
       const response = await fetch(`/api/printers/${printerId}/point-divider`);
       const data = await response.json();
 
-      const pointDivider = data.pointDivider;
+      const pointDivider = data.pointDivider || 4000;
 
-      // Simpan ke localStorage
       localStorage.setItem(
         `printer_${printerId}_pointDivider`,
         JSON.stringify({
@@ -44,16 +43,20 @@ export const useUserManagement = () => {
       return pointDivider;
     } catch (error) {
       console.error("Error getting point divider:", error);
-      return null; // Default fallback
+      return 4000;
     }
   };
 
-  // 🌐 handlePhoneNumberChange /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
+  // ============================================
+  // handlePhoneNumberChange
+  // ============================================
   const handlePhoneNumberChange = (newPhoneNumber) => {
     setPhoneNumber(newPhoneNumber);
   };
 
-  // 🌐 loadUserSession /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
+  // ============================================
+  // loadUserSession
+  // ============================================
   const loadUserSession = () => {
     const savedSession = localStorage.getItem("userSession");
     if (savedSession) {
@@ -68,23 +71,28 @@ export const useUserManagement = () => {
     }
   };
 
-  // 🌐 checkUserPoints /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
+  // ============================================
+  // checkUserPoints - Check user points via API
+  // ============================================
   const checkUserPoints = async () => {
     if (!phoneNumber.trim()) {
       alert("Silakan masukkan nomor HP terlebih dahulu");
       return;
     }
 
-    const cleanPhone = phoneNumber.replace(/\D/g, "");
-    if (cleanPhone.length < 10) {
-      alert("Nomor HP harus minimal 10 digit");
+    // ✅ Normalisasi nomor telepon ke format 628...
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+    if (!normalizedPhone) {
+      alert("Nomor HP tidak valid. Pastikan nomor sudah benar.");
       return;
     }
 
     setCheckingPoints(true);
     try {
+      // ✅ Kirim normalizedPhone ke API
       const response = await fetch(
-        `/api/users/${cleanPhone}/points?printerId=${printerId}`,
+        `/api/users/${encodeURIComponent(normalizedPhone)}/points?printerId=${printerId}`,
       );
 
       if (!response.ok) {
@@ -95,91 +103,111 @@ export const useUserManagement = () => {
 
       if (result.success) {
         if (result.user) {
-          setUserPoints(result.points);
+          const points = result.points || result.user?.points || 0;
+          setUserPoints(points);
+
           const userData = {
-            phone: cleanPhone,
-            points: result.points,
-            name: result.user.name || `User ${cleanPhone}`,
+            phone: normalizedPhone,
+            points: points,
+            name: result.user?.name || `User ${normalizedPhone}`,
+            userId: result.user?.userId,
+            role: result.user?.role || "customer",
             timestamp: Date.now(),
           };
           setUserSession(userData);
           localStorage.setItem("userSession", JSON.stringify(userData));
 
-          alert(
-            `✅ Berhasil login! Anda memiliki ${result.points.toFixed(
-              2,
-            )} point.`,
-          );
+          alert(`✅ Berhasil login! Anda memiliki ${points.toFixed(2)} point.`);
         } else if (result.user === null) {
-          await createNewUserDirect(cleanPhone);
+          await createNewUserDirect(normalizedPhone);
         }
       } else {
         throw new Error(result.error || "Gagal Login");
       }
     } catch (error) {
       console.error("❌ Error checking points:", error);
-      await createNewUserDirect(cleanPhone, true);
+      await createNewUserDirect(normalizedPhone, true);
     } finally {
       setCheckingPoints(false);
     }
   };
 
-  // 🌐 createNewUserDirect /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
+  // ============================================
+  // createNewUserDirect
+  // ============================================
   const createNewUserDirect = async (phone, isFallback = false) => {
     try {
-      // Dapatkan point divider dari printer
+      // ✅ Phone sudah dalam format 628...
       const pointDivider = await getPrinterPointDivider();
 
-      const createResponse = await fetch(`/api/users/points`, {
+      const createResponse = await fetch(`/api/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: phone,
-          points: 0,
-          amount: 0,
-          orderId: `init-${Date.now()}`,
-          pointDivider: pointDivider,
-          fileName: "user-initialization.pdf",
+          name: `User ${phone}`,
+          role: "customer",
         }),
       });
 
       if (createResponse.ok) {
         const result = await createResponse.json();
-        const userData = {
-          phone: phone,
-          points: 0,
-          name: `User ${phone}`,
-          timestamp: Date.now(),
-        };
-        setUserPoints(0);
-        setUserSession(userData);
-        localStorage.setItem("userSession", JSON.stringify(userData));
 
-        if (isFallback) {
-          alert("✅ Nomor HP berhasil didaftarkan! Mulai dengan 0 point.");
+        if (result.success && result.data) {
+          const userData = {
+            phone: phone,
+            points: 0,
+            name: result.data.name || `User ${phone}`,
+            userId: result.data.userId,
+            role: result.data.role || "customer",
+            timestamp: Date.now(),
+          };
+          setUserPoints(0);
+          setUserSession(userData);
+          localStorage.setItem("userSession", JSON.stringify(userData));
+
+          if (isFallback) {
+            alert("✅ Nomor HP berhasil didaftarkan! Mulai dengan 0 point.");
+          } else {
+            alert(
+              "✅ Akun baru berhasil dibuat! Anda mendapatkan 0 point awal.",
+            );
+          }
         } else {
-          alert("✅ Akun baru berhasil dibuat! Anda mendapatkan 0 point awal.");
+          throw new Error(result.error || "Gagal membuat user baru");
         }
       } else {
-        throw new Error("Gagal membuat user baru");
+        console.warn("⚠️ API create user failed, using local fallback");
+        await createLocalUserFallback(phone);
       }
     } catch (error) {
       console.error("❌ Error creating user:", error);
-      const userData = {
-        phone: phone,
-        points: 0,
-        name: `User ${phone}`,
-        timestamp: Date.now(),
-      };
-      setUserPoints(0);
-      setUserSession(userData);
-      localStorage.setItem("userSession", JSON.stringify(userData));
-
-      alert("⚠️ Sistem point sedang maintenance. Lanjut dengan 0 point.");
+      await createLocalUserFallback(phone);
     }
   };
 
-  // 🌐 logoutUser /app/printers/[printerId]/hooks/useUserManagement.js TERPAKAI
+  // ============================================
+  // createLocalUserFallback
+  // ============================================
+  const createLocalUserFallback = async (phone) => {
+    const userData = {
+      phone: phone,
+      points: 0,
+      name: `User ${phone}`,
+      userId: `local-${Date.now()}`,
+      role: "customer",
+      timestamp: Date.now(),
+    };
+    setUserPoints(0);
+    setUserSession(userData);
+    localStorage.setItem("userSession", JSON.stringify(userData));
+
+    alert("⚠️ Sistem point sedang maintenance. Lanjut dengan 0 point.");
+  };
+
+  // ============================================
+  // logoutUser
+  // ============================================
   const logoutUser = () => {
     setUserSession(null);
     setUserPoints(null);
@@ -188,26 +216,21 @@ export const useUserManagement = () => {
   };
 
   return {
-    // States
     phoneNumber,
     userPoints,
     checkingPoints,
     refreshingPoints,
     userSession,
-
-    // Setters
     setPhoneNumber,
     setUserPoints,
     setCheckingPoints,
     setRefreshingPoints,
     setUserSession,
-
-    // Functions
     handlePhoneNumberChange,
     loadUserSession,
     checkUserPoints,
     logoutUser,
     createNewUserDirect,
-    getPrinterPointDivider, // Export untuk digunakan di komponen lain
+    getPrinterPointDivider,
   };
 };

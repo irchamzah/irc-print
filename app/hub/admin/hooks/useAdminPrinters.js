@@ -1,3 +1,4 @@
+// app/hub/admin/hooks/useAdminPrinters.js SUDAH DIUPDATE
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,12 +15,16 @@ export const useAdminPrinters = () => {
     total: 0,
     online: 0,
     offline: 0,
+    maintenance: 0,
     lowPaper: 0,
     outOfPaper: 0,
+    unlimitedMode: 0, // ✅ Tambah stat untuk unlimited mode
+    limitedMode: 0, // ✅ Tambah stat untuk limited mode
   });
   const [filterOptions, setFilterOptions] = useState({
     cities: [],
     provinces: [],
+    paperModes: ["limited", "unlimited"], // ✅ Tambah opsi filter paper mode
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,8 +37,7 @@ export const useAdminPrinters = () => {
     paperAvailable: searchParams.get("paperAvailable") || "",
     minPaperCount: searchParams.get("minPaperCount") || "",
     maxPaperCount: searchParams.get("maxPaperCount") || "",
-    hasColor: searchParams.get("hasColor") || "",
-    hasDuplex: searchParams.get("hasDuplex") || "",
+    paperMode: searchParams.get("paperMode") || "", // ✅ Tambah filter paper mode
     search: searchParams.get("search") || "",
     sortBy: searchParams.get("sortBy") || "createdAt",
     sortOrder: searchParams.get("sortOrder") || "desc",
@@ -60,6 +64,14 @@ export const useAdminPrinters = () => {
     }).format(date);
   };
 
+  // Helper: Mendapatkan status kertas (low/out)
+  const getPaperStatus = (paperCount, paperMode) => {
+    if (paperMode === "unlimited") return "unlimited";
+    if (paperCount === 0) return "out";
+    if (paperCount < 20) return "low";
+    return "normal";
+  };
+
   // Helper: Build query params
   const buildQueryParams = useCallback(
     (extraParams = {}) => {
@@ -79,8 +91,7 @@ export const useAdminPrinters = () => {
         params.set("minPaperCount", filters.minPaperCount);
       if (filters.maxPaperCount)
         params.set("maxPaperCount", filters.maxPaperCount);
-      if (filters.hasColor) params.set("hasColor", filters.hasColor);
-      if (filters.hasDuplex) params.set("hasDuplex", filters.hasDuplex);
+      if (filters.paperMode) params.set("paperMode", filters.paperMode); // ✅ Tambah
       if (filters.search) params.set("search", filters.search);
       if (filters.sortBy) params.set("sortBy", filters.sortBy);
       if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
@@ -106,8 +117,7 @@ export const useAdminPrinters = () => {
         params.set("minPaperCount", newFilters.minPaperCount);
       if (newFilters.maxPaperCount)
         params.set("maxPaperCount", newFilters.maxPaperCount);
-      if (newFilters.hasColor) params.set("hasColor", newFilters.hasColor);
-      if (newFilters.hasDuplex) params.set("hasDuplex", newFilters.hasDuplex);
+      if (newFilters.paperMode) params.set("paperMode", newFilters.paperMode); // ✅ Tambah
       if (newFilters.search) params.set("search", newFilters.search);
       if (newFilters.sortBy) params.set("sortBy", newFilters.sortBy);
       if (newFilters.sortOrder) params.set("sortOrder", newFilters.sortOrder);
@@ -135,16 +145,29 @@ export const useAdminPrinters = () => {
       const data = await response.json();
       if (data.success) {
         setPrinters(data.data || []);
+
+        // ✅ Update stats dengan data dari VPS
         setStats(
           data.stats || {
             total: 0,
             online: 0,
             offline: 0,
+            maintenance: 0,
             lowPaper: 0,
             outOfPaper: 0,
+            unlimitedMode: 0,
+            limitedMode: 0,
           },
         );
-        setFilterOptions(data.filters || { cities: [], provinces: [] });
+
+        setFilterOptions(
+          data.filters || {
+            cities: [],
+            provinces: [],
+            paperModes: ["limited", "unlimited"],
+          },
+        );
+
         setPagination((prev) => ({
           ...prev,
           total: data.pagination?.total || 0,
@@ -167,7 +190,7 @@ export const useAdminPrinters = () => {
       setPagination((prev) => ({ ...prev, page: 1 }));
       updateUrl(1, pagination.limit, updatedFilters);
     },
-    [filters, pagination.limit, updateUrl, fetchPrinters],
+    [filters, pagination.limit, updateUrl],
   );
 
   // Reset all filters
@@ -179,8 +202,7 @@ export const useAdminPrinters = () => {
       paperAvailable: "",
       minPaperCount: "",
       maxPaperCount: "",
-      hasColor: "",
-      hasDuplex: "",
+      paperMode: "",
       search: "",
       sortBy: "createdAt",
       sortOrder: "desc",
@@ -295,6 +317,31 @@ export const useAdminPrinters = () => {
     [token, fetchPrinters],
   );
 
+  // Helper: Mendapatkan status badge untuk printer
+  const getPrinterStatusBadge = (status, paperMode, paperCount) => {
+    if (status === "online") {
+      return { class: "bg-green-100 text-green-700", text: "🟢 Online" };
+    }
+    if (status === "offline") {
+      return { class: "bg-red-100 text-red-700", text: "🔴 Offline" };
+    }
+    return { class: "bg-yellow-100 text-yellow-700", text: "🟡 Maintenance" };
+  };
+
+  // Helper: Mendapatkan status kertas badge
+  const getPaperStatusBadge = (paperCount, paperMode) => {
+    if (paperMode === "unlimited") {
+      return { class: "bg-purple-100 text-purple-700", text: "♾️ Unlimited" };
+    }
+    if (paperCount === 0) {
+      return { class: "bg-red-100 text-red-700", text: "❌ Habis" };
+    }
+    if (paperCount < 20) {
+      return { class: "bg-orange-100 text-orange-700", text: "⚠️ Menipis" };
+    }
+    return { class: "bg-green-100 text-green-700", text: "✅ Tersedia" };
+  };
+
   // Initial load
   useEffect(() => {
     if (token) {
@@ -337,6 +384,9 @@ export const useAdminPrinters = () => {
 
     // Helpers
     formatDate,
+    getPrinterStatusBadge,
+    getPaperStatusBadge,
+    getPaperStatus,
     refresh: fetchPrinters,
   };
 };

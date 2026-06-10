@@ -14,12 +14,10 @@ import { ProfitOverview } from "./components/ProfitOverview";
 import { PaperRefillHistory } from "./components/PaperRefillHistory";
 import { RefillDetailModal } from "./components/RefillDetailModal";
 import { PrintJobsTable } from "./components/PrintJobsTable";
-import { InfoCard } from "./components/InfoCard";
 import { useHubAuth } from "../../auth/hooks/useHubAuth";
 import { HubLayout } from "../../components/HubLayout";
 import CustomLink from "@/app/components/CustomLink";
 import LoadingAnimation from "@/app/components/LoadingAnimation";
-import { ProofUploadModal } from "../../admin/paper-refills/components/ProofUploadModal";
 
 // Komponen konten yang menggunakan useSearchParams
 function PartnerHubContent() {
@@ -48,6 +46,7 @@ function PartnerHubContent() {
     filteredRefills,
     filteredTotalRevenue,
     filteredPartnerProfit,
+    filteredPlatformProfit,
     profit,
     dateRange,
     setCustomDateRange,
@@ -75,7 +74,6 @@ function PartnerHubContent() {
   const [selectedRefill, setSelectedRefill] = useState(null);
   const [showRefillModal, setShowRefillModal] = useState(false);
   const [refillLoading, setRefillLoading] = useState(false);
-  const [showProofModal, setShowProofModal] = useState(false);
   const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
@@ -89,7 +87,6 @@ function PartnerHubContent() {
     }
   }, [searchParams, initialLoading]);
 
-  // Scroll to section when page loads with hash or pagination
   useEffect(() => {
     if (
       !initialLoading &&
@@ -125,39 +122,48 @@ function PartnerHubContent() {
     }
   };
 
+  // ✅ Update menggunakan paperRefillId
   const handleViewRefill = (refill) => {
-    const relatedJobs = getJobsByRefill(refill.refillId);
+    const paperRefillId = refill.paperRefillId || refill.refillId;
+    const relatedJobs = getJobsByRefill(paperRefillId);
     setSelectedRefill({ ...refill, jobs: relatedJobs });
     setShowRefillModal(true);
   };
 
+  // ✅ Update: Tandai refill sebagai paid (tanpa upload proof)
   const handleMarkAsPaid = async (refill) => {
+    const paperRefillId = refill.paperRefillId || refill.refillId;
+
     if (refill.status !== "completed") {
-      alert('❌ Hanya refill dengan status "Selesai" yang bisa dibayar');
+      alert('❌ Hanya refill dengan status "Selesai" yang bisa ditandai');
       return;
     }
 
     if (refill.totalRevenue <= 0) {
-      alert("❌ Tidak bisa membayar refill tanpa pendapatan");
+      alert("❌ Tidak bisa menandai refill tanpa pendapatan");
       return;
     }
 
-    setSelectedRefill(refill);
-    setShowProofModal(true);
-  };
+    if (
+      !confirm(
+        `Apakah Anda yakin ingin menandai refill ini sebagai "Dibayar"?\n\nProfit Partner: ${formatRupiah(refill.partnerProfit)}\nTotal Revenue: ${formatRupiah(refill.totalRevenue)}`,
+      )
+    ) {
+      return;
+    }
 
-  const handleConfirmPayment = async (formData) => {
-    if (!selectedRefill) return;
-
-    setProcessingId(selectedRefill.refillId);
+    setProcessingId(paperRefillId);
 
     try {
       const response = await fetch(
-        `/api/hub/admin/paper-refills/${selectedRefill.refillId}/pay`,
+        `/api/hub/admin/paper-refills/${paperRefillId}/pay`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}), // ✅ Kosongkan body, tanpa upload proof
         },
       );
 
@@ -171,8 +177,7 @@ function PartnerHubContent() {
       const result = await response.json();
 
       if (result.success) {
-        alert("✅ Pembayaran berhasil");
-        setShowProofModal(false);
+        alert("✅ Refill berhasil ditandai sebagai Dibayar");
         setShowRefillModal(false);
         await refreshData();
       } else {
@@ -208,6 +213,19 @@ function PartnerHubContent() {
 
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
+  };
+
+  const handleRefillWithAmount = async (amount) => {
+    setRefillLoading(true);
+    const result = await handleRefillPaper(amount);
+    setRefillLoading(false);
+
+    if (result.success) {
+      setShowRefillSuccess(true);
+      setTimeout(() => setShowRefillSuccess(false), 3000);
+    } else {
+      alert("Gagal mengisi kertas: " + result.error);
+    }
   };
 
   if (!user || !token) {
@@ -282,7 +300,7 @@ function PartnerHubContent() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-4">
         <div>
-          <p className="text-sm text-gray-500 mt-1">{printer.name}</p>
+          <p className="text-sm text-gray-500 mt-1">{printer.printerName || printer.name}</p>
         </div>
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full">
@@ -300,10 +318,12 @@ function PartnerHubContent() {
         <PaperStatusCard
           paperCount={printer.paperStatus?.paperCount || 0}
           lastRefill={printer.paperStatus?.lastRefill}
-          onRefill={handleRefill}
+          onRefill={handleRefillWithAmount}
           loading={refillLoading}
           showSuccess={showRefillSuccess}
           formatDate={formatDate}
+          paperMode={printer.paperMode || "limited"}
+          paperPackSizes={[10, 20, 40, 80, 100]}
         />
 
         <DateRangeFilter
@@ -315,21 +335,20 @@ function PartnerHubContent() {
 
         <ProfitOverview
           totalRevenue={filteredTotalRevenue}
-          profitShare={profit.profitShare}
           pendingPayout={profit.pendingPayout}
-          totalProfit={profit.partnerProfit}
+          paidProfit={profit.paidProfit}
+          platformProfit={filteredPlatformProfit}
           formatRupiah={formatRupiah}
           dateRange={dateRange}
         />
 
-        {/* ✅ Tambahkan ref ke section refills */}
+        {/* Section Refills */}
         <div ref={refillsSectionRef}>
           <PaperRefillHistory
             refills={filteredRefills}
             onViewRefill={handleViewRefill}
             formatRupiah={formatRupiah}
             formatShortDate={formatShortDate}
-            // Props pagination
             currentPage={refillsCurrentPage}
             totalPages={refillsTotalPages}
             totalItems={refillsTotalItems}
@@ -343,8 +362,8 @@ function PartnerHubContent() {
           />
         </div>
 
-        {/* ✅ Tambahkan ref ke section jobs */}
-        <div ref={jobsSectionRef} className="mt-8">
+        {/* Section Jobs (commented out, bisa diaktifkan nanti) */}
+        {/* <div ref={jobsSectionRef} className="mt-8">
           <PrintJobsTable
             jobs={filteredJobs}
             refills={filteredRefills}
@@ -352,7 +371,6 @@ function PartnerHubContent() {
             formatRupiah={formatRupiah}
             formatDate={formatDate}
             formatShortDate={formatShortDate}
-            // Props pagination
             currentPage={jobsCurrentPage}
             totalPages={jobsTotalPages}
             totalItems={jobsTotalItems}
@@ -364,9 +382,7 @@ function PartnerHubContent() {
             endDate={endDate}
             loading={loadingJobsPage}
           />
-        </div>
-
-        <InfoCard profitShare={profit.profitShare} />
+        </div> */}
       </div>
 
       <RefillDetailModal
@@ -378,14 +394,6 @@ function PartnerHubContent() {
         formatRupiah={formatRupiah}
         formatDate={formatDate}
         userRole={user?.role}
-      />
-      <ProofUploadModal
-        isOpen={showProofModal}
-        onClose={() => setShowProofModal(false)}
-        onConfirm={handleConfirmPayment}
-        refill={selectedRefill}
-        processing={processingId === selectedRefill?.refillId}
-        formatRupiah={formatRupiah}
       />
     </div>
   );
