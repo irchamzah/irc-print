@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
 // PrinterFormModal - UPDATED dengan upload gambar
 export const PrinterFormModal = ({
@@ -281,10 +280,9 @@ export const PrinterFormModal = ({
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.images) {
-          // ✅ Gunakan NEXT_PUBLIC_VPS_API_URL yang sudah didefinisikan
           const imagesWithFullUrl = data.images.map((img) => ({
             ...img,
-            url: `${NEXT_PUBLIC_VPS_API_URL}${img.url}`,
+            url: `/api/proxy/image?path=${encodeURIComponent(img.url)}`,
           }));
           setExistingImages(imagesWithFullUrl);
         }
@@ -515,10 +513,9 @@ export const PrinterFormModal = ({
       const result = await response.json();
 
       if (result.success) {
-        // ✅ TAMBAHKAN URL LENGKAP VPS UNTUK GAMBAR BARU
         const imagesWithFullUrl = result.images.map((img) => ({
           ...img,
-          url: `${NEXT_PUBLIC_VPS_API_URL}${img.url}`,
+          url: `/api/proxy/image?path=${encodeURIComponent(img.url)}`,
         }));
 
         setExistingImages((prev) => [...prev, ...imagesWithFullUrl]);

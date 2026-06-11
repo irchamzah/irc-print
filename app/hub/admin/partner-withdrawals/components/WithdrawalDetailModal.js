@@ -1,5 +1,4 @@
 "use client";
-const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
 export const WithdrawalDetailModal = ({
   isOpen,
@@ -35,12 +34,17 @@ export const WithdrawalDetailModal = ({
 
   const getTransferProofUrl = (transferProof) => {
     if (!transferProof) return null;
-    // Jika sudah full URL, langsung return
-    if (transferProof.url?.startsWith("http")) {
-      return transferProof.url;
+    let imagePath = transferProof.url;
+    // Jika full URL VPS, ambil path-nya saja
+    if (imagePath?.startsWith("http")) {
+      try {
+        imagePath = new URL(imagePath).pathname;
+      } catch {
+        return null;
+      }
     }
-    // Tambahkan base URL VPS
-    return `${NEXT_PUBLIC_VPS_API_URL}${transferProof.url}`;
+    if (!imagePath) return null;
+    return `/api/proxy/image?path=${encodeURIComponent(imagePath)}`;
   };
 
   const transferProofUrl = getTransferProofUrl(withdrawal.transferProof);

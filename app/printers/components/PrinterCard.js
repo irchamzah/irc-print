@@ -9,7 +9,6 @@ import {
 import CustomLink from "@/app/components/CustomLink";
 import ImageModal from "./ImageModal";
 
-const NEXT_PUBLIC_VPS_API_URL = process.env.NEXT_PUBLIC_VPS_API_URL;
 
 export default function PrinterCard({ printer, userLocation }) {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -57,7 +56,7 @@ export default function PrinterCard({ printer, userLocation }) {
             // ✅ TAMBAHKAN URL LENGKAP DARI VPS
             const imagesWithFullUrl = data.images.map((img) => ({
               ...img,
-              url: `${NEXT_PUBLIC_VPS_API_URL}${img.url}`,
+              url: `/api/proxy/image?path=${encodeURIComponent(img.url)}`,
             }));
             setImages(imagesWithFullUrl);
           }
