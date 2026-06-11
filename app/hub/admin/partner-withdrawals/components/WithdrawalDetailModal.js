@@ -187,7 +187,9 @@ export const WithdrawalDetailModal = ({
                 <img
                   src={transferProofUrl}
                   alt="Bukti Transfer"
-                  className="max-h-48 rounded-lg border border-gray-200 cursor-pointer"
+                  width={400}
+                  height={192}
+                  className="max-h-48 rounded-lg border border-gray-200 cursor-pointer object-contain"
                   onClick={() => window.open(transferProofUrl, "_blank")}
                 />
               </div>

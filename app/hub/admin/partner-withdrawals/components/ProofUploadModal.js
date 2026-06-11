@@ -111,7 +111,7 @@ export const ProofUploadModal = ({
               <img
                 src={previewUrl}
                 alt="Preview"
-                className="max-h-32 rounded-lg border border-gray-200"
+                className="max-h-32 rounded-lg border border-gray-200 object-contain"
               />
             </div>
           )}
