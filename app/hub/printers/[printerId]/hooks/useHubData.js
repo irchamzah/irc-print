@@ -215,7 +215,7 @@ export const useHubData = (
   const handleRefillPaper = async (sheetsAdded = 80) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_VPS_API_URL}/api/hub/printers/${printerId}/refills`,
+        `/api/hub/printers/${printerId}/refills`,
         {
           method: "POST",
           headers: {
