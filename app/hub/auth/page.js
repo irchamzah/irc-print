@@ -254,7 +254,7 @@ export default function HubLoginPage() {
             </form>
 
             {/* Demo Accounts */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
+            {/* <div className="mt-8 pt-6 border-t border-gray-200">
               <p className="text-xs text-gray-500 mb-3 text-center">
                 Akun Demo untuk Testing
               </p>
@@ -274,7 +274,7 @@ export default function HubLoginPage() {
                   <div className="text-xs opacity-75">085111222444</div>
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Link ke Halaman Utama */}
             <div className="mt-6 text-center">
