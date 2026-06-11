@@ -42,18 +42,13 @@ export default function PrinterCard({ printer, userLocation }) {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const token = localStorage.getItem("hubToken");
         const response = await fetch(
-          `/api/hub/printers/${normalizedPrinter.id}/images`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          },
+          `/api/public/printers/${normalizedPrinter.id}/images`,
         );
 
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.images?.length > 0) {
-            // ✅ TAMBAHKAN URL LENGKAP DARI VPS
             const imagesWithFullUrl = data.images.map((img) => ({
               ...img,
               url: `/api/proxy/image?path=${encodeURIComponent(img.url)}`,
