@@ -69,6 +69,21 @@ export const PrintJobsTable = ({
     return job.customerPhone || job.phoneNumber || "-";
   };
 
+  const getWithdrawalBadge = (refillStatus) => {
+    switch (refillStatus) {
+      case "paid":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Sudah Dicairkan</span>;
+      case "pending_withdrawal":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Diproses</span>;
+      case "completed":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Menunggu</span>;
+      case "active":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Belum</span>;
+      default:
+        return <span className="text-gray-400 text-xs">-</span>;
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-4 sm:p-6 border-b border-gray-200">
@@ -104,6 +119,9 @@ export const PrintJobsTable = ({
                 Profit Partner
               </th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Pencairan
+              </th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Refill
               </th>
             </tr>
@@ -115,7 +133,7 @@ export const PrintJobsTable = ({
               const totalCost = getJobTotalCost(job);
 
               return (
-                <tr key={job.jobId} className="hover:bg-gray-50">
+                <tr key={job.printJobId || job.jobId || job._id} className="hover:bg-gray-50">
                   <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
                     {formatDate(job.createdAt)}
                   </td>
@@ -128,13 +146,16 @@ export const PrintJobsTable = ({
                     </div>
                   </td>
                   <td className="px-4 sm:px-6 py-3 text-sm text-gray-600">
-                    {job.totalPages || 0} lbr
+                    {job.settings?.totalPages || job.totalPages || 0} lbr
                   </td>
                   <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-800">
                     {formatRupiah(totalCost)}
                   </td>
                   <td className="px-4 sm:px-6 py-3 text-sm font-medium text-green-600">
                     {formatRupiah(partnerProfit)}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3">
+                    {getWithdrawalBadge(job.refillStatus)}
                   </td>
                   <td className="px-4 sm:px-6 py-3">
                     {refill && (

@@ -315,16 +315,18 @@ function PartnerHubContent() {
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <PaperStatusCard
-          paperCount={printer.paperStatus?.paperCount || 0}
-          lastRefill={printer.paperStatus?.lastRefill}
-          onRefill={handleRefillWithAmount}
-          loading={refillLoading}
-          showSuccess={showRefillSuccess}
-          formatDate={formatDate}
-          paperMode={printer.paperMode || "limited"}
-          paperPackSizes={[10, 20, 40, 80, 100]}
-        />
+        {printer.paperMode !== "unlimited" && (
+          <PaperStatusCard
+            paperCount={printer.paperStatus?.paperCount || 0}
+            lastRefill={printer.paperStatus?.lastRefill}
+            onRefill={handleRefillWithAmount}
+            loading={refillLoading}
+            showSuccess={showRefillSuccess}
+            formatDate={formatDate}
+            paperMode={printer.paperMode || "limited"}
+            paperPackSizes={[10, 20, 40, 80, 100]}
+          />
+        )}
 
         <DateRangeFilter
           dateRange={dateRange}
@@ -342,47 +344,47 @@ function PartnerHubContent() {
           dateRange={dateRange}
         />
 
-        {/* Section Refills */}
-        <div ref={refillsSectionRef}>
-          <PaperRefillHistory
-            refills={filteredRefills}
-            onViewRefill={handleViewRefill}
-            formatRupiah={formatRupiah}
-            formatShortDate={formatShortDate}
-            currentPage={refillsCurrentPage}
-            totalPages={refillsTotalPages}
-            totalItems={refillsTotalItems}
-            pageSize={refillsPageSize}
-            section={"refills"}
-            currentJobsPage={jobsCurrentPage}
-            currentRefillsPage={refillsCurrentPage}
-            startDate={startDate}
-            endDate={endDate}
-            loading={loadingRefillsPage}
-          />
-        </div>
-
-        {/* Section Jobs (commented out, bisa diaktifkan nanti) */}
-        {/* <div ref={jobsSectionRef} className="mt-8">
-          <PrintJobsTable
-            jobs={filteredJobs}
-            refills={filteredRefills}
-            onViewRefill={handleViewRefill}
-            formatRupiah={formatRupiah}
-            formatDate={formatDate}
-            formatShortDate={formatShortDate}
-            currentPage={jobsCurrentPage}
-            totalPages={jobsTotalPages}
-            totalItems={jobsTotalItems}
-            pageSize={jobsPageSize}
-            section={"jobs"}
-            currentJobsPage={jobsCurrentPage}
-            currentRefillsPage={refillsCurrentPage}
-            startDate={startDate}
-            endDate={endDate}
-            loading={loadingJobsPage}
-          />
-        </div> */}
+        {printer.paperMode === "unlimited" ? (
+          <div ref={jobsSectionRef}>
+            <PrintJobsTable
+              jobs={filteredJobs}
+              refills={filteredRefills}
+              onViewRefill={handleViewRefill}
+              formatRupiah={formatRupiah}
+              formatDate={formatDate}
+              formatShortDate={formatShortDate}
+              currentPage={jobsCurrentPage}
+              totalPages={jobsTotalPages}
+              totalItems={jobsTotalItems}
+              pageSize={jobsPageSize}
+              section={"jobs"}
+              currentJobsPage={jobsCurrentPage}
+              currentRefillsPage={refillsCurrentPage}
+              startDate={startDate}
+              endDate={endDate}
+              loading={loadingJobsPage}
+            />
+          </div>
+        ) : (
+          <div ref={refillsSectionRef}>
+            <PaperRefillHistory
+              refills={filteredRefills}
+              onViewRefill={handleViewRefill}
+              formatRupiah={formatRupiah}
+              formatShortDate={formatShortDate}
+              currentPage={refillsCurrentPage}
+              totalPages={refillsTotalPages}
+              totalItems={refillsTotalItems}
+              pageSize={refillsPageSize}
+              section={"refills"}
+              currentJobsPage={jobsCurrentPage}
+              currentRefillsPage={refillsCurrentPage}
+              startDate={startDate}
+              endDate={endDate}
+              loading={loadingRefillsPage}
+            />
+          </div>
+        )}
       </div>
 
       <RefillDetailModal
