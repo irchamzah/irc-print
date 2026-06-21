@@ -62,10 +62,15 @@ export const usePaymentManagement = (
         body: uploadFormData,
       });
       const uploadResult = await uploadResponse.json();
-      const uploadedFilePath = uploadResult.success ? uploadResult.filePath : null;
+      const uploadedFilePath = uploadResult.success
+        ? uploadResult.filePath
+        : null;
 
       if (!uploadResult.success) {
-        console.warn("⚠️ File pre-upload failed, will continue without stored file:", uploadResult.error);
+        console.warn(
+          "⚠️ File pre-upload failed, will continue without stored file:",
+          uploadResult.error,
+        );
       }
 
       // Create payment
@@ -269,9 +274,6 @@ export const usePaymentManagement = (
         alert(
           `✅ Payment berhasil! File sedang diproses untuk print.\n` +
             `📄 ${totalPagesToPrint} halaman akan dicetak.\n` +
-            (userSession
-              ? `🎉 +${pointsToAdd} point telah ditambahkan!\nPoint akan di-update otomatis...\n`
-              : "") +
             `Job ID: ${result.printJobId || result.jobId}\n\nHalaman akan direfresh...`,
         );
 
@@ -604,9 +606,6 @@ export const usePaymentManagement = (
         alert(
           `✅ Print job berhasil dikirim!\n` +
             `📄 ${totalPagesToPrint} halaman akan dicetak.\n` +
-            (userSession
-              ? `🎉 +${pointsToAdd} point telah ditambahkan!\n`
-              : "") +
             `Job ID: ${result.printJobId || result.jobId}\n\nHalaman akan direfresh...`,
         );
 
