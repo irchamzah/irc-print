@@ -205,6 +205,31 @@ export const usePaymentManagement = (
         return;
       }
 
+      // ✅ STEP 2.5: Simpan data Midtrans ke DB (midtransStatus, paidAt, midtransResponse)
+      try {
+        await fetch(`/api/transactions/update-status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: currentPrintJobId,
+            phoneNumber: userSession?.phone,
+            status: "settlement",
+            midtransStatus: statusResult.status,
+            paymentMethod: statusResult.paymentType,
+            midtransResponse: {
+              transaction_status: statusResult.status,
+              payment_type: statusResult.paymentType,
+              settlement_time: statusResult.settlementTime,
+              fraud_status: statusResult.fraudStatus,
+              gross_amount: statusResult.grossAmount,
+              currency: statusResult.currency,
+            },
+          }),
+        });
+      } catch (updateErr) {
+        console.warn("⚠️ Failed to update midtrans status in DB:", updateErr);
+      }
+
       // ✅ STEP 3: Kirim print job ke VPS
       const pointDivider = parseInt(
         localStorage.getItem("printerPointDivider"),
